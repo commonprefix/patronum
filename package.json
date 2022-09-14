@@ -1,0 +1,10 @@
+{
+  "name": "patronum",
+  "version": "0.0.1",
+  "description": "Patronum: Ethereum RPC proxy that verifies RPC responses against given trusted block hashes",
+  "main": "index.js",
+  "repository": "https://github.com/shresthagrawal/verifying-eth-rpc-proxy.git",
+  "author": "Shresth Agrawal <shresthagrawal.31@gmail.com>",
+  "license": "MIT",
+  "private": false
+}
