@@ -1,6 +1,8 @@
-### Patronum
+Patronum
+========
 Ethereum RPC proxy that verifies RPC responses against given trusted block hashes. Currently, most of the DAPPs and Wallets interact with Ethereum over RPC. Patronum can be used as a building block to build light clients that retrofit into the existing Ethereum infrastructure. This library mainly takes advantage of the `eth_getProof` RPC to perform merkle inclusion proofs for RPC call verification.
 
-<a title="frostnova, CC BY 2.0 &lt;https://creativecommons.org/licenses/by/2.0&gt;, via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:Patronus.jpg"><img width="512" alt="Patronus" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Patronus.jpg/512px-Patronus.jpg"></a> 
-
+<div style='border-radius: 512px; width: 512px; height: 512px; overflow: hidden; margin: auto;'>
+    <a title="frostnova, CC BY 2.0 &lt;https://creativecommons.org/licenses/by/2.0&gt;, via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:Patronus.jpg"><img width="512" alt="Patronus" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Patronus.jpg/512px-Patronus.jpg"></a> 
+</div>
 
