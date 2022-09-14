@@ -2,9 +2,34 @@
   "name": "patronum",
   "version": "0.0.1",
   "description": "Patronum: Ethereum RPC proxy that verifies RPC responses against given trusted block hashes",
-  "main": "index.js",
+  "main": "lib/index.js",
   "repository": "https://github.com/shresthagrawal/verifying-eth-rpc-proxy.git",
   "author": "Shresth Agrawal <shresthagrawal.31@gmail.com>",
   "license": "MIT",
-  "private": false
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc"
+  },
+  "dependencies": {
+    "@ethereumjs/block": "4.0.0-beta.3",
+    "@ethereumjs/blockchain": "6.0.0-beta.3",
+    "@ethereumjs/common": "3.0.0-beta.3",
+    "@ethereumjs/trie": "5.0.0-beta.3",
+    "@ethereumjs/tx": "4.0.0-beta.3",
+    "@ethereumjs/util": "8.0.0-beta.3",
+    "@ethereumjs/vm": "6.0.0-beta.3",
+    "lodash": "4.17.21",
+    "rlp": "3.0.0",
+    "web3": "1.7.5"
+  },
+  "devDependencies": {
+    "@types/decimal.js": "7.4.0",
+    "@types/express": "4.17.13",
+    "@types/lodash": "4.14.182",
+    "dotenv": "16.0.2",
+    "ts-essentials": "9.1.2",
+    "typescript": "^4.6.3"
+  }
 }
