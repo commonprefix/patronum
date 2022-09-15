@@ -3,7 +3,7 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import { Trie } from '@ethereumjs/trie';
 import rlp from 'rlp';
-import { Common, Chain, Hardfork } from '@ethereumjs/common';
+import { Common, Chain } from '@ethereumjs/common';
 import {
   Address,
   Account,
@@ -12,12 +12,9 @@ import {
   toBuffer,
   TypeOutput,
   setLengthLeft,
-  zeros,
   isTruthy,
   isFalsy,
   KECCAK256_NULL_S,
-  KECCAK256_NULL,
-  KECCAK256_RLP,
 } from '@ethereumjs/util';
 import { VM } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
@@ -35,7 +32,6 @@ import {
   CodeResponse,
   RequestMethodCallback,
   Bytes,
-  ChainId,
   GetProof,
   BlockNumber as BlockOpt,
   Method,
@@ -405,11 +401,12 @@ export class VerifyingProvider {
     //   this.fetchRequests(requestBatch),
     // );
     // return flatten((await async.parallelLimit(tasks, RPC_PARALLEL_LIMIT)) as any);
-    const results = [];
+    const results: Response[] = [];
     for (const requestBatch of batchedRequests) {
-      results.push(await this.fetchRequests(requestBatch));
+      const res = await this.fetchRequests(requestBatch);
+      results.push(...res);
     }
-    return results.flat();
+    return results;
   }
 
   private async getVM(
