@@ -7,7 +7,6 @@
   "author": "Shresth Agrawal <shresthagrawal.31@gmail.com>",
   "license": "MIT",
   "private": false,
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "prepare": "tsc"
