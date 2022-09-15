@@ -36,7 +36,7 @@ import {
   BlockNumber as BlockOpt,
   Method,
   HexString,
-} from './types.js';
+} from './types';
 import {
   ZERO_ADDR,
   GAS_LIMIT,
@@ -45,12 +45,12 @@ import {
   INTERNAL_ERROR,
   INVALID_PARAMS,
   MAX_SOCKET,
-} from './constants.js';
+} from './constants';
 import {
   headerDataFromWeb3Response,
   blockDataFromWeb3Response,
   toJSONRPCBlock,
-} from './utils.js';
+} from './utils';
 
 const bigIntToHex = (n: string | bigint): string =>
   '0x' + BigInt(n).toString(16);

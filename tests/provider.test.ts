@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import Web3 from 'web3';
-import { VerifyingProvider } from '../src/index.js';
+import { VerifyingProvider } from '../src';
 
 const RPC_URL = process.env.RPC_URL || '';
 
