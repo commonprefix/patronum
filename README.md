@@ -6,11 +6,26 @@ Ethereum RPC proxy that verifies RPC responses against given trusted block hashe
     <a title="frostnova, CC BY 2.0 &lt;https://creativecommons.org/licenses/by/2.0&gt;, via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:Patronus.jpg"><img width="512" alt="Patronus" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Patronus.jpg/512px-Patronus.jpg"></a> 
 </div>
 
+#### Start RPC Provider
 ```ts
+import { VerifyingProvider, startServer } from 'patronum';
+
 const provider = new VerifyingProvider(
-    trustlessRPCURL,
-    trustedBlockNumber,
-    trustedBlockHash,
+  trustlessRPCURL,
+  trustedBlockNumber,
+  trustedBlockHash,
+);
+await startServer(provider, PORT);
+```
+
+#### Use VerifyingProvider
+```ts
+import { VerifyingProvider } from 'patronum';
+
+const provider = new VerifyingProvider(
+  trustlessRPCURL,
+  trustedBlockNumber,
+  trustedBlockHash,
 );
 
 console.log(await provider.getBalance(address, blockTag));
