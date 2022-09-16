@@ -1,1 +1,1 @@
-export { VerifyingProvider } from './provider.js';
+export { VerifyingProvider } from './provider';
