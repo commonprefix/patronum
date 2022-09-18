@@ -4,6 +4,7 @@
     "outDir": "lib", // .js (as well as .d.ts, .js.map, etc.) files will be emitted into this directory.,
     "removeComments": true, // Strips all comments from TypeScript files when converting into JavaScript- you rarely read compiled code so this saves space
     "target": "ES6", // Target environment
+    "declaration": true, // Generate .d.ts files such that it can be imported in a ts project
 
     // Module resolution
     "module": "commonjs",
