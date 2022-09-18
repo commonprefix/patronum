@@ -43,6 +43,9 @@ export type CodeResponse = string;
 export type Request = AccountRequest | CodeRequest;
 export type Response = AccountResponse | CodeResponse;
 
+type RequestFn = (request: Request, cb: RequestMethodCallback) => Method
+export type RequestMethods = Record<Request['type'], RequestFn>
+
 export type RequestMethodCallback = (error: Error, data: Response) => void;
 
 export type JSONRPCBlock = {

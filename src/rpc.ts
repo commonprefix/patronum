@@ -5,7 +5,7 @@ import { bigIntToHex } from "@ethereumjs/util"
 import { Block } from 'web3-eth';
 import { getEnv } from "./utils"
 import { MAX_SOCKET } from './constants';
-import { RequestMethodCallback, Method, AccountRequest, CodeRequest, Bytes32, GetProof, BlockNumber, Request, Response, RPCTx } from "./types"
+import { RequestMethodCallback, RequestMethods, Method, AccountRequest, CodeRequest, Bytes32, GetProof, BlockNumber, Request, Response, RPCTx } from "./types"
 
 export default class extends Web3 {
 	constructor(providerURL?: string) {
@@ -68,12 +68,16 @@ export default class extends Web3 {
 		return results;
 	}
 
-	private constructRequestMethod(request: Request, callback: RequestMethodCallback): Method {
-		switch (request.type) {
-			case 'account': return this.getProofRequest(request, callback);
-			case 'code':    return this.getCodeRequest(request, callback);
+	private constructRequestMethod(request: Request, cb: RequestMethodCallback): Method {
+		const methods: RequestMethods = {
+			account: this.getProofRequest,
+			code: this.getCodeRequest
 		}
+
+		const { type } = request
+		return methods[type](request, cb)
 	}
+
 
 	private getProofRequest({ addressHex, storageSlots, blockNumber, }: AccountRequest, callback: RequestMethodCallback): Method {
 		 //@ts-ignore
