@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"], // specifies which default set of type definitions to use ("DOM", "ES6", etc)
+    "lib": ["es2017", "es7", "es6", "dom"], // specifies which default set of type definitions to use ("DOM", "ES6", etc)
     "outDir": "lib", // .js (as well as .d.ts, .js.map, etc.) files will be emitted into this directory.,
     "removeComments": true, // Strips all comments from TypeScript files when converting into JavaScript- you rarely read compiled code so this saves space
-    "target": "ES6", // Target environment
+    "target": "es6", // Target environment
     "declaration": true, // Generate .d.ts files such that it can be imported in a ts project
 
     // Module resolution
