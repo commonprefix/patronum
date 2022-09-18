@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
 import { INTERNAL_ERROR } from './constants';
-import { VerifyingProvider } from './provider';
+import VerifyingProvider from './provider';
 
 export function getApp(provider: VerifyingProvider) {
   const server = new JSONRPCServer();

@@ -2,7 +2,6 @@ import {
   isTruthy,
   setLengthLeft,
   toBuffer,
-  bigIntToHex,
   bufferToHex,
   intToHex,
 } from '@ethereumjs/util';
@@ -13,7 +12,22 @@ import {
   FeeMarketEIP1559TxData,
   TypedTransaction,
 } from '@ethereumjs/tx';
+import Web3 from 'web3';
 import { JSONRPCTx, JSONRPCBlock } from './types';
+
+export const numberToHex = Web3.utils.numberToHex
+export const keccak256 = Web3.utils.keccak256
+
+export const bigIntToHex = (n: string | bigint): string =>
+  '0x' + BigInt(n).toString(16);
+
+export function getEnv(name: string): string {
+  if (name in process.env) {
+    return String(process.env[name])
+  }
+
+  throw new Error(`Missing env variable: ${name}`)
+}
 
 // TODO: fix blockInfo type
 export function headerDataFromWeb3Response(blockInfo: any): HeaderData {

@@ -1,6 +1,5 @@
-import http from 'http';
 import _ from 'lodash';
-import Web3 from 'web3';
+import RPC from './rpc';
 import { Trie } from '@ethereumjs/trie';
 import rlp from 'rlp';
 import { Common, Chain } from '@ethereumjs/common';
@@ -25,16 +24,11 @@ import {
   Bytes32,
   RPCTx,
   Request,
-  AccountRequest,
-  CodeRequest,
-  Response,
   AccountResponse,
   CodeResponse,
-  RequestMethodCallback,
   Bytes,
   GetProof,
   BlockNumber as BlockOpt,
-  Method,
   HexString,
 } from './types';
 import {
@@ -44,24 +38,23 @@ import {
   MAX_BLOCK_HISTORY,
   INTERNAL_ERROR,
   INVALID_PARAMS,
-  MAX_SOCKET,
 } from './constants';
 import {
   headerDataFromWeb3Response,
   blockDataFromWeb3Response,
   toJSONRPCBlock,
+  keccak256,
+  bigIntToHex,
+  numberToHex
 } from './utils';
-
-const bigIntToHex = (n: string | bigint): string =>
-  '0x' + BigInt(n).toString(16);
 
 const emptyAccountSerialize = new Account().serialize();
 
 // TODO: handle fallback if RPC fails
 // TODO: if anything is accessed outside the accesslist the provider
 // should throw error
-export class VerifyingProvider {
-  web3: Web3;
+export default class VerifyingProvider {
+  rpc: RPC;
   common: Common;
 
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
@@ -69,42 +62,13 @@ export class VerifyingProvider {
   private latestBlockNumber: bigint;
   private oldestBlockNumber: bigint;
 
-  private requestTypeToMethod: Record<
-    Request['type'],
-    (request: Request, callback: RequestMethodCallback) => Method
-  > = {
-    // Type errors ignored due to https://github.com/ChainSafe/web3.js/issues/4655
-    account: (request: AccountRequest, callback) =>
-      // @ts-ignore
-      this.web3.eth.getProof.request(
-        request.addressHex,
-        request.storageSlots,
-        bigIntToHex(request.blockNumber),
-        callback,
-      ),
-    code: (request: CodeRequest, callback) =>
-      // @ts-ignore
-      this.web3.eth.getCode.request(
-        request.addressHex,
-        bigIntToHex(request.blockNumber),
-        callback,
-      ),
-  };
-
   constructor(
     providerURL: string,
     blockNumber: bigint | number,
     blockHash: Bytes32,
     chain: bigint | Chain = Chain.Mainnet,
   ) {
-    this.web3 = new Web3(
-      new Web3.providers.HttpProvider(providerURL, {
-        keepAlive: true,
-        agent: {
-          http: new http.Agent({ keepAlive: true, maxSockets: MAX_SOCKET }),
-        },
-      }),
-    );
+    this.rpc = new RPC(providerURL)
     this.common = new Common({
       chain,
       // hardfork: Hardfork.ArrowGlacier,
@@ -118,11 +82,7 @@ export class VerifyingProvider {
   async getBalance(addressHex: AddressHex, blockOpt: BlockOpt) {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
-    const proof = await this.web3.eth.getProof(
-      addressHex,
-      [],
-      bigIntToHex(header.number),
-    );
+    const proof = await this.rpc.getProof(addressHex, [], header.number);
     const isAccountCorrect = await this.verifyProof(
       address,
       [],
@@ -136,7 +96,7 @@ export class VerifyingProvider {
       };
     }
 
-    return this.web3.utils.numberToHex(proof.balance);
+    return numberToHex(proof.balance);
   }
 
   blockNumber(): HexString {
@@ -152,7 +112,7 @@ export class VerifyingProvider {
     blockOpt: BlockOpt,
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
-    const [accountProof, code] = (await this.fetchRequests([
+    const [accountProof, code] = (await this.rpc.fetchRequests([
       {
         type: 'account',
         blockNumber: header.number,
@@ -200,11 +160,7 @@ export class VerifyingProvider {
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
-    const proof = await this.web3.eth.getProof(
-      addressHex,
-      [],
-      bigIntToHex(header.number),
-    );
+    const proof = await this.rpc.getProof(addressHex, [], header.number);
 
     const isAccountCorrect = await this.verifyProof(
       address,
@@ -294,16 +250,11 @@ export class VerifyingProvider {
     return this.getJSONRPCBlock(header, includeTransactions);
   }
 
-  async sendRawTransaction(signedTx: string) {
-    const recipt = await this.web3.eth.sendSignedTransaction(signedTx);
-    return (recipt as any).transactionHash;
-  }
-
   private async getJSONRPCBlock(
     header: BlockHeader,
     includeTransactions: boolean,
   ) {
-    const blockInfo = await this.web3.eth.getBlock(
+    const blockInfo = await this.rpc.getBlock(
       parseInt(header.number.toString()),
       true,
     );
@@ -366,47 +317,8 @@ export class VerifyingProvider {
     }
   }
 
-  private constructRequestMethod(
-    request: Request,
-    callback: (error: Error, data: Response) => void,
-  ): Method {
-    return this.requestTypeToMethod[request.type](request, callback);
-  }
-
-  private async fetchRequests(requests: Request[]) {
-    const batch = new this.web3.BatchRequest();
-    const promises = requests.map(request => {
-      return new Promise<Response>((resolve, reject) => {
-        // Type error ignored due to https://github.com/ChainSafe/web3.js/issues/4655
-        const method = this.constructRequestMethod(
-          request,
-          (error: Error, data: Response) => {
-            if (error) reject(error);
-            resolve(data);
-          },
-        );
-        batch.add(method);
-      });
-    });
-    batch.execute();
-    return Promise.all(promises);
-  }
-
-  private async fetchRequestsInBatches(
-    requests: Request[],
-    batchSize: number,
-  ): Promise<Response[]> {
-    const batchedRequests = _.chunk(requests, batchSize);
-    // const tasks = batchedRequests.map(requestBatch =>
-    //   this.fetchRequests(requestBatch),
-    // );
-    // return flatten((await async.parallelLimit(tasks, RPC_PARALLEL_LIMIT)) as any);
-    const results: Response[] = [];
-    for (const requestBatch of batchedRequests) {
-      const res = await this.fetchRequests(requestBatch);
-      results.push(...res);
-    }
-    return results;
+  public sendRawTransaction(signedTx: string) {
+    return this.rpc.sendRawTransaction(signedTx)
   }
 
   private async getVM(
@@ -420,10 +332,7 @@ export class VerifyingProvider {
       gas: tx.gas ? tx.gas : GAS_LIMIT,
     };
 
-    const { accessList } = await this.web3.eth.createAccessList(
-      _tx,
-      bigIntToHex(blockNumber),
-    );
+    const accessList = await this.rpc.createAccessList(_tx, blockNumber);
     accessList.push({ address: _tx.from, storageKeys: [] });
     if (_tx.to && !accessList.some(a => a.address.toLowerCase() === _tx.to)) {
       accessList.push({ address: _tx.to, storageKeys: [] });
@@ -458,7 +367,7 @@ export class VerifyingProvider {
         ];
       }).flat() as Request[];
     const responses = _.chunk(
-      await this.fetchRequestsInBatches(requests, REQUEST_BATCH_SIZE),
+      await this.rpc.fetchRequestsInBatches(requests, REQUEST_BATCH_SIZE),
       2,
     ) as [AccountResponse, CodeResponse][];
 
@@ -533,7 +442,7 @@ export class VerifyingProvider {
 
   private async getBlockHeaderByHash(blockHash: Bytes32) {
     if (!this.blockHeaders[blockHash]) {
-      const blockInfo = await this.web3.eth.getBlock(blockHash);
+      const blockInfo = await this.rpc.getBlock(blockHash);
       const headerData = headerDataFromWeb3Response(blockInfo);
       const header = BlockHeader.fromHeaderData(headerData);
 
@@ -551,7 +460,7 @@ export class VerifyingProvider {
   private verifyCodeHash(code: Bytes, codeHash: Bytes32): boolean {
     return (
       (code === '0x' && codeHash === '0x' + KECCAK256_NULL_S) ||
-      Web3.utils.keccak256(code) === codeHash
+      keccak256(code) === codeHash
     );
   }
 
@@ -562,7 +471,7 @@ export class VerifyingProvider {
     proof: GetProof,
   ): Promise<boolean> {
     const trie = new Trie();
-    const key = Web3.utils.keccak256(address.toString());
+    const key = keccak256(address.toString());
     const expectedAccountRLP = await trie.verifyProof(
       stateRoot,
       toBuffer(key),
@@ -581,7 +490,7 @@ export class VerifyingProvider {
 
     for (let i = 0; i < storageKeys.length; i++) {
       const sp = proof.storageProof[i];
-      const key = Web3.utils.keccak256(
+      const key = keccak256(
         bufferToHex(setLengthLeft(toBuffer(storageKeys[i]), 32)),
       );
       const expectedStorageRLP = await trie.verifyProof(
