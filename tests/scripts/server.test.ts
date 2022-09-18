@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import Web3 from 'web3';
-import { VerifyingProvider, startServer } from '../src';
+import { VerifyingProvider, startServer } from '../../src';
 
 const RPC_URL = process.env.RPC_URL || '';
 const PORT = 8545;
