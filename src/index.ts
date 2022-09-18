@@ -1,3 +1,3 @@
 import VerifyingProvider from './provider';
-export default VerifyingProvider
+export { VerifyingProvider }
 export * from './server';
