@@ -1,11 +1,11 @@
 import http from 'http';
 import Web3 from "web3"
-import { MAX_SOCKET } from './constants';
-import { RequestMethodCallback, Method, AccountRequest, CodeRequest, Bytes32, GetProof, BlockNumber, Request, Response, RPCTx } from "./types"
-import { getEnv } from "./utils"
+import _ from 'lodash';
 import { bigIntToHex } from "@ethereumjs/util"
 import { Block } from 'web3-eth';
-import _ from 'lodash';
+import { getEnv } from "./utils"
+import { MAX_SOCKET } from './constants';
+import { RequestMethodCallback, Method, AccountRequest, CodeRequest, Bytes32, GetProof, BlockNumber, Request, Response, RPCTx } from "./types"
 
 export default class extends Web3 {
 	constructor(providerURL?: string) {
@@ -36,42 +36,16 @@ export default class extends Web3 {
 		return (recipt as any).transactionHash;
 	}
 
-	public getProof(addressHex: string, storageSlots: Bytes32[], blockNumber: bigint): Promise<GetProof> {
-		//@ts-ignore
+	public getProof(addressHex: string, storageSlots: Bytes32[], blockNumber: bigint): Promise<GetProof> { //@ts-ignore
 		return this.eth.getProof(addressHex, storageSlots, bigintToHex(blockNumber))
-	}
-
-	public getProofRequest(request: AccountRequest, callback: RequestMethodCallback): Method {
-		//@ts-ignore
-		return this.eth.getProof.request(
-			request.addressHex,
-			request.storageSlots,
-			bigIntToHex(request.blockNumber),
-			callback,
-		)
-	}
-
-	public getCodeRequest(request: CodeRequest, callback: RequestMethodCallback): Method {
-		//@ts-ignore
-		return this.eth.getCode.request(
-			request.addressHex,
-			bigIntToHex(request.blockNumber),
-			callback
-		)
 	}
 
 	async fetchRequests(requests: Request[]) {
 		const batch = new this.BatchRequest();
 		const promises = requests.map(request => {
 			return new Promise<Response>((resolve, reject) => {
-				// Type error ignored due to https://github.com/ChainSafe/web3.js/issues/4655
-				const method = this.constructRequestMethod(
-				request,
-				(error: Error, data: Response) => {
-					if (error) reject(error);
-					resolve(data);
-				},
-				);
+				const callback = (error: Error, data: Response) => error ? reject(error) : resolve(data)
+				const method = this.constructRequestMethod(request, callback);
 				batch.add(method);
 			});
 		});
@@ -101,4 +75,13 @@ export default class extends Web3 {
 		}
 	}
 
+	private getProofRequest({ addressHex, storageSlots, blockNumber, }: AccountRequest, callback: RequestMethodCallback): Method {
+		 //@ts-ignore
+		return this.eth.getProof.request(addressHex, storageSlots, bigIntToHex(blockNumber), callback)
+	}
+
+	private getCodeRequest({ addressHex, blockNumber }: CodeRequest, callback: RequestMethodCallback): Method {
+		//@ts-ignore
+		return this.eth.getCode.request(addressHex, bigIntToHex(blockNumber), callback)
+	}
 }
