@@ -51,7 +51,10 @@ export default class extends Web3 {
 		});
 
 		batch.execute();
-		return Promise.all(promises);
+
+		const res = await Promise.all(promises);
+		console.log('res')
+		return res
 	}
 
 	async fetchRequestsInBatches(
@@ -70,8 +73,8 @@ export default class extends Web3 {
 
 	private constructRequestMethod(request: Request, cb: RequestMethodCallback): Method {
 		const methods: RequestMethods = {
-			account: this.getProofRequest,
-			code: this.getCodeRequest
+			account: this.getProofRequest.bind(this),
+			code: this.getCodeRequest.bind(this)
 		}
 
 		const { type } = request
@@ -80,7 +83,7 @@ export default class extends Web3 {
 
 
 	private getProofRequest({ addressHex, storageSlots, blockNumber, }: AccountRequest, callback: RequestMethodCallback): Method {
-		 //@ts-ignore
+		//@ts-ignore
 		return this.eth.getProof.request(addressHex, storageSlots, bigIntToHex(blockNumber), callback)
 	}
 
