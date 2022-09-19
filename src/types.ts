@@ -90,3 +90,21 @@ export type JSONRPCTx = {
   r: string; // DATA, 32 Bytes - ECDSA signature r
   s: string; // DATA, 32 Bytes - ECDSA signature s
 };
+
+export type JsonRpcReceipt = {
+  transactionHash: string // DATA, 32 Bytes - hash of the transaction.
+  transactionIndex: string // QUANTITY - integer of the transactions index position in the block.
+  blockHash: string // DATA, 32 Bytes - hash of the block where this transaction was in.
+  blockNumber: string // QUANTITY - block number where this transaction was in.
+  from: string // DATA, 20 Bytes - address of the sender.
+  to: string | null // DATA, 20 Bytes - address of the receiver. null when it's a contract creation transaction.
+  cumulativeGasUsed: string // QUANTITY  - The total amount of gas used when this transaction was executed in the block.
+  effectiveGasPrice: string // QUANTITY - The final gas price per gas paid by the sender in wei.
+  gasUsed: string // QUANTITY - The amount of gas used by this specific transaction alone.
+  contractAddress: string | null // DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
+  logs: JsonRpcLog[] // Array - Array of log objects, which this transaction generated.
+  logsBloom: string // DATA, 256 Bytes - Bloom filter for light clients to quickly retrieve related logs.
+  // It also returns either:
+  root?: string // DATA, 32 bytes of post-transaction stateroot (pre Byzantium)
+  status?: string // QUANTITY, either 1 (success) or 0 (failure)
+}

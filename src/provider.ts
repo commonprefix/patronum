@@ -19,7 +19,7 @@ import {
 import { VM } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
 import { Blockchain } from '@ethereumjs/blockchain';
-import { Transaction } from '@ethereumjs/tx';
+import { Transaction, TransactionFactory } from '@ethereumjs/tx';
 import {
   AddressHex,
   Bytes32,
@@ -36,6 +36,7 @@ import {
   BlockNumber as BlockOpt,
   Method,
   HexString,
+  JsonRpcReceipt
 } from './types';
 import {
   ZERO_ADDR,
@@ -67,7 +68,6 @@ export class VerifyingProvider {
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
   private blockHeaders: { [blockHash: string]: BlockHeader } = {};
   private latestBlockNumber: bigint;
-  private oldestBlockNumber: bigint;
 
   private requestTypeToMethod: Record<
     Request['type'],
@@ -111,8 +111,21 @@ export class VerifyingProvider {
     });
     const _blockNumber = BigInt(blockNumber);
     this.latestBlockNumber = _blockNumber;
-    this.oldestBlockNumber = _blockNumber;
     this.blockHashes[bigIntToHex(_blockNumber)] = blockHash;
+  }
+
+  update(blockHash: Bytes32, blockNumber: bigint) {
+    const blockNumberHex = bigIntToHex(blockNumber);
+    if (
+      blockNumberHex in this.blockHashes &&
+      this.blockHashes[blockNumberHex] !== blockHash
+    ) {
+      console.log(
+        'Overriding an existing verified blockhash. Possibly the chain had a reorg',
+      );
+    }
+    this.latestBlockNumber = blockNumber;
+    this.blockHashes[blockNumberHex] = blockHash;
   }
 
   async getBalance(addressHex: AddressHex, blockOpt: BlockOpt) {
@@ -286,22 +299,65 @@ export class VerifyingProvider {
 
   async getBlockByHash(blockHash: Bytes32, includeTransactions: boolean) {
     const header = await this.getBlockHeaderByHash(blockHash);
-    return this.getJSONRPCBlock(header, includeTransactions);
+    const block = await this.getBlock(header);
+    // TODO: fix total difficulty(TD), TD is not included in the header
+    // and there is no way to verify TD
+    return toJSONRPCBlock(block, BigInt(0), [], includeTransactions);
   }
 
   async getBlockByNumber(blockOpt: BlockOpt, includeTransactions: boolean) {
     const header = await this.getBlockHeader(blockOpt);
-    return this.getJSONRPCBlock(header, includeTransactions);
+    const block = await this.getBlock(header);
+    // TODO: fix total difficulty(TD), TD is not included in the header
+    // and there is no way to verify TD
+    return toJSONRPCBlock(block, BigInt(0), [], includeTransactions);
   }
 
-  async sendRawTransaction(signedTx: string) {
-    const recipt = await this.web3.eth.sendSignedTransaction(signedTx);
-    return (recipt as any).transactionHash;
+  async sendRawTransaction(signedTx: string): Promise<string> {
+    // TODO: brodcast tx directly to the mem pool?
+    this.web3.eth.sendSignedTransaction(signedTx).on('error', (err) => console.error(err));
+    const tx = TransactionFactory.fromSerializedData(toBuffer(signedTx), {common: this.common});
+    return bufferToHex(tx.hash());
   }
 
-  private async getJSONRPCBlock(
-    header: BlockHeader,
-    includeTransactions: boolean,
+  async getTransactionReceipt(txHash: Bytes32): Promise<JsonRpcReceipt | null> {
+    const receipt = await this.web3.eth.getTransactionReceipt(txHash);
+    if(!receipt) {
+      return null;
+    }
+    const header = await this.getBlockHeader(receipt.blockNumber);
+    const block = await this.getBlock(header);
+    const index = block.transactions.findIndex(tx => bufferToHex(tx.hash()) === txHash.toLowerCase());
+    if(index === -1) {
+      throw {
+        code: INTERNAL_ERROR,
+        message: 'the recipt provided by the RPC is invalid',
+      };
+    }
+    const tx = block.transactions[index];
+
+    return {
+      transactionHash: txHash,
+      transactionIndex: this.web3.utils.numberToHex(index),
+      blockHash: bufferToHex(block.hash()),
+      blockNumber: bigIntToHex(block.header.number),
+      from: tx.getSenderAddress().toString(),
+      to: tx.to?.toString() ?? null,
+      // TODO: to verify the params below download all the tx recipts
+      // of the block, compute the recipt root and verify the recipt
+      // root matches that in the blockHeader 
+      cumulativeGasUsed: '0x0',
+      effectiveGasPrice: '0x0',
+      gasUsed: '0x0',
+      contractAddress: null,
+      logs: [],
+      logsBloom: '0x0',
+      status: '0x1'
+    }
+  }
+
+  private async getBlock(
+    header: BlockHeader
   ) {
     const blockInfo = await this.web3.eth.getBlock(
       parseInt(header.number.toString()),
@@ -326,9 +382,7 @@ export class VerifyingProvider {
       };
     }
 
-    // TODO: fix total difficulty(TD), TD is not included in the header
-    // and there is no way to verify TD
-    return toJSONRPCBlock(block, BigInt(0), [], includeTransactions);
+    return block;
   }
 
   private async getBlockHeader(blockOpt: BlockOpt): Promise<BlockHeader> {
@@ -441,8 +495,8 @@ export class VerifyingProvider {
 
     await vm.stateManager.checkpoint();
 
-    const requests =
-      accessList.map(access => {
+    const requests = accessList
+      .map(access => {
         return [
           {
             type: 'account',
@@ -456,7 +510,8 @@ export class VerifyingProvider {
             addressHex: access.address,
           },
         ];
-      }).flat() as Request[];
+      })
+      .flat() as Request[];
     const responses = _.chunk(
       await this.fetchRequestsInBatches(requests, REQUEST_BATCH_SIZE),
       2,
@@ -518,14 +573,25 @@ export class VerifyingProvider {
   }
 
   private async getBlockHash(blockNumber: bigint) {
+    if (blockNumber > this.latestBlockNumber)
+      throw new Error('cannot return blockhash for a blocknumber in future');
     // TODO: fetch the blockHeader is batched request
-    while (this.oldestBlockNumber > blockNumber) {
-      const hash = this.blockHashes[bigIntToHex(this.oldestBlockNumber)];
+    let lastVerifiedBlockNumber = this.latestBlockNumber;
+    while (lastVerifiedBlockNumber > blockNumber) {
+      const hash = this.blockHashes[bigIntToHex(lastVerifiedBlockNumber)];
       const header = await this.getBlockHeaderByHash(hash);
-      this.oldestBlockNumber--;
-      this.blockHashes[bigIntToHex(this.oldestBlockNumber)] = bufferToHex(
-        header.parentHash,
-      );
+      lastVerifiedBlockNumber--;
+      const parentBlockHash = bufferToHex(header.parentHash);
+      const parentBlockNumberHex = bigIntToHex(lastVerifiedBlockNumber);
+      if (
+        parentBlockNumberHex in this.blockHashes &&
+        this.blockHashes[parentBlockNumberHex] !== parentBlockHash
+      ) {
+        console.log(
+          'Overriding an existing verified blockhash. Possibly the chain had a reorg',
+        );
+      }
+      this.blockHashes[parentBlockNumberHex] = parentBlockHash;
     }
 
     return this.blockHashes[bigIntToHex(blockNumber)];

@@ -63,6 +63,10 @@ export function getApp(provider: VerifyingProvider) {
     },
   );
 
+  server.addMethod('eth_getTransactionReceipt', async ([txHash]: [string]) => {
+    return await provider.getTransactionReceipt(txHash);
+  });
+
   server.addMethod('eth_sendRawTransaction', async ([tx]: [string]) => {
     return await provider.sendRawTransaction(tx);
   });
