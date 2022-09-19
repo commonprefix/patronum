@@ -36,7 +36,7 @@ import {
   BlockNumber as BlockOpt,
   Method,
   HexString,
-  JsonRpcReceipt
+  JSONRPCReceipt
 } from './types';
 import {
   ZERO_ADDR,
@@ -320,7 +320,7 @@ export class VerifyingProvider {
     return bufferToHex(tx.hash());
   }
 
-  async getTransactionReceipt(txHash: Bytes32): Promise<JsonRpcReceipt | null> {
+  async getTransactionReceipt(txHash: Bytes32): Promise<JSONRPCReceipt | null> {
     const receipt = await this.web3.eth.getTransactionReceipt(txHash);
     if(!receipt) {
       return null;
