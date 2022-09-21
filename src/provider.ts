@@ -259,8 +259,8 @@ export class VerifyingProvider {
     }
   }
 
-  async estimateGas(transaction: RPCTx, blockOpt: BlockOpt) {
-    const header = await this.getBlockHeader(blockOpt);
+  async estimateGas(transaction: RPCTx, blockOpt?: BlockOpt) {
+    const header = await this.getBlockHeader(blockOpt ?? 'latest');
     if (isFalsy(transaction.gas)) {
       // If no gas limit is specified use the last block gas limit as an upper bound.
       transaction.gas = GAS_LIMIT;
