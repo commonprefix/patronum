@@ -100,6 +100,15 @@ export function getApp(provider: VerifyingProvider) {
 
   app.use(bodyParser.json());
 
+  app.use((_, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept',
+    );
+    next();
+  });
+
   app.post('/', async (req, res) => {
     const jsonRPCRequest = req.body;
     server.receive(jsonRPCRequest).then(jsonRPCResponse => {
