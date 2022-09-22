@@ -1,6 +1,7 @@
 export const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 // TODO: set the correct gas limit!
 export const GAS_LIMIT = '0x1c9c380';
+export const GAS_PERCENT_BUFFER = 20;
 export const REQUEST_BATCH_SIZE = 10;
 export const MAX_SOCKET = 10;
 export const EMPTY_ACCOUNT_EXTCODEHASH =

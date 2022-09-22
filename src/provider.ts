@@ -46,6 +46,7 @@ import {
   INTERNAL_ERROR,
   INVALID_PARAMS,
   MAX_SOCKET,
+  GAS_PERCENT_BUFFER
 } from './constants';
 import {
   headerDataFromWeb3Response,
@@ -261,10 +262,16 @@ export class VerifyingProvider {
 
   async estimateGas(transaction: RPCTx, blockOpt?: BlockOpt) {
     const header = await this.getBlockHeader(blockOpt ?? 'latest');
+
     if (isFalsy(transaction.gas)) {
       // If no gas limit is specified use the last block gas limit as an upper bound.
-      transaction.gas = GAS_LIMIT;
+      transaction.gas = bigIntToHex(header.gasLimit);
     }
+
+    if (isFalsy(transaction.gasPrice)) {
+      transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
+    }
+
     const txData = { ...transaction, gasLimit: transaction.gas };
     const tx = Transaction.fromTxData(txData, {
       common: this.common,
@@ -288,7 +295,7 @@ export class VerifyingProvider {
         skipBalance: true,
         skipBlockGasLimitValidation: true,
       });
-      return `0x${totalGasSpent.toString(16)}`;
+      return bigIntToHex(totalGasSpent * BigInt(100 + GAS_PERCENT_BUFFER) / BigInt(100));
     } catch (error: any) {
       throw {
         code: INTERNAL_ERROR,
@@ -352,7 +359,7 @@ export class VerifyingProvider {
       contractAddress: null,
       logs: [],
       logsBloom: '0x0',
-      status: '0x1'
+      status: receipt.status ? '0x1' : '0x0' // unverified!! 
     }
   }
 
