@@ -40,13 +40,11 @@ import {
 } from './types';
 import {
   ZERO_ADDR,
-  GAS_LIMIT,
   REQUEST_BATCH_SIZE,
   MAX_BLOCK_HISTORY,
   INTERNAL_ERROR,
   INVALID_PARAMS,
-  MAX_SOCKET,
-  GAS_PERCENT_BUFFER
+  MAX_SOCKET
 } from './constants';
 import {
   headerDataFromWeb3Response,
@@ -238,7 +236,7 @@ export class VerifyingProvider {
 
   async call(transaction: RPCTx, blockOpt: BlockOpt) {
     const header = await this.getBlockHeader(blockOpt);
-    const vm = await this.getVM(transaction, header.number, header.stateRoot);
+    const vm = await this.getVM(transaction, header);
     const { from, to, gas: gasLimit, gasPrice, value, data } = transaction;
     try {
       const runCallOpts = {
@@ -278,7 +276,7 @@ export class VerifyingProvider {
       freeze: false,
     });
 
-    const vm = await this.getVM(transaction, header.number, header.stateRoot);
+    const vm = await this.getVM(transaction, header);
 
     // set from address
     const from = isTruthy(transaction.from)
@@ -294,8 +292,9 @@ export class VerifyingProvider {
         skipNonce: true,
         skipBalance: true,
         skipBlockGasLimitValidation: true,
+        block: { header } as any,
       });
-      return bigIntToHex(totalGasSpent * BigInt(100 + GAS_PERCENT_BUFFER) / BigInt(100));
+      return bigIntToHex(totalGasSpent);
     } catch (error: any) {
       throw {
         code: INTERNAL_ERROR,
@@ -472,18 +471,18 @@ export class VerifyingProvider {
 
   private async getVM(
     tx: RPCTx,
-    blockNumber: bigint,
-    stateRoot: Buffer,
+    header: BlockHeader,
   ): Promise<VM> {
+    // forcefully set gasPrice to 0 to avoid out of gas error
     const _tx = {
       ...tx,
       from: tx.from ? tx.from : ZERO_ADDR,
-      gas: tx.gas ? tx.gas : GAS_LIMIT,
+      gasPrice: 0, 
+      gas: tx.gas ? tx.gas : bigIntToHex(header.gasLimit!),
     };
-
     const { accessList } = await this.web3.eth.createAccessList(
       _tx,
-      bigIntToHex(blockNumber),
+      bigIntToHex(header.number),
     );
     accessList.push({ address: _tx.from, storageKeys: [] });
     if (_tx.to && !accessList.some(a => a.address.toLowerCase() === _tx.to)) {
@@ -507,13 +506,13 @@ export class VerifyingProvider {
         return [
           {
             type: 'account',
-            blockNumber,
+            blockNumber: header.number,
             storageSlots: access.storageKeys,
             addressHex: access.address,
           },
           {
             type: 'code',
-            blockNumber,
+            blockNumber: header.number,
             addressHex: access.address,
           },
         ];
@@ -538,7 +537,7 @@ export class VerifyingProvider {
       const isAccountCorrect = await this.verifyProof(
         address,
         storageKeys,
-        stateRoot,
+        header.stateRoot,
         accountProof,
       );
       if (!isAccountCorrect) {
