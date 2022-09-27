@@ -24,7 +24,7 @@
     "noUnusedLocals": true, // Report errors on unused local variables.
     "noUnusedParameters": true, // Report errors on unused parameters in functions
     "noImplicitAny": true, // In some cases where no type annotations are present, TypeScript will fall back to a type of any for a variable when it cannot infer the type.
-    "skipLibCheck": true, // Skip checks on node_modules/
+    "skipLibCheck": true // Skip checks on node_modules/
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

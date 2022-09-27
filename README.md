@@ -1,5 +1,5 @@
-Patronum
-========
+# Patronum
+
 Ethereum RPC proxy that verifies RPC responses against given trusted block hashes. Currently, most of the DAPPs and Wallets interact with Ethereum over RPC. Patronum can be used as a building block to build light clients that retrofit into the existing Ethereum infrastructure. This library mainly takes advantage of the `eth_getProof` RPC to perform merkle inclusion proofs for RPC call verification.
 
 <div style='border-radius: 512px; width: 512px; height: 512px; overflow: hidden; margin: auto;'>
@@ -7,6 +7,7 @@ Ethereum RPC proxy that verifies RPC responses against given trusted block hashe
 </div>
 
 #### Start RPC Provider
+
 ```ts
 import { VerifyingProvider, startServer } from 'patronum';
 
@@ -19,6 +20,7 @@ await startServer(provider, PORT);
 ```
 
 #### Use VerifyingProvider
+
 ```ts
 import { VerifyingProvider } from 'patronum';
 
@@ -32,4 +34,5 @@ console.log(await provider.getBalance(address, blockTag));
 
 console.log(await provider.call(tx));
 ```
-**The RPC URL provided to VerifyingProvider should support `eth_getProof` and `eth_createAccessList`. Infura doesn't support `eth_createAccessList`.** 
+
+**The RPC URL provided to VerifyingProvider should support `eth_getProof` and `eth_createAccessList`. Infura doesn't support `eth_createAccessList`.**

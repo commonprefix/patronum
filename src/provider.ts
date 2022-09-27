@@ -36,7 +36,7 @@ import {
   BlockNumber as BlockOpt,
   Method,
   HexString,
-  JSONRPCReceipt
+  JSONRPCReceipt,
 } from './types';
 import {
   ZERO_ADDR,
@@ -44,7 +44,7 @@ import {
   MAX_BLOCK_HISTORY,
   INTERNAL_ERROR,
   INVALID_PARAMS,
-  MAX_SOCKET
+  MAX_SOCKET,
 } from './constants';
 import {
   headerDataFromWeb3Response,
@@ -321,20 +321,26 @@ export class VerifyingProvider {
 
   async sendRawTransaction(signedTx: string): Promise<string> {
     // TODO: brodcast tx directly to the mem pool?
-    this.web3.eth.sendSignedTransaction(signedTx).on('error', (err) => console.error(err));
-    const tx = TransactionFactory.fromSerializedData(toBuffer(signedTx), {common: this.common});
+    this.web3.eth
+      .sendSignedTransaction(signedTx)
+      .on('error', err => console.error(err));
+    const tx = TransactionFactory.fromSerializedData(toBuffer(signedTx), {
+      common: this.common,
+    });
     return bufferToHex(tx.hash());
   }
 
   async getTransactionReceipt(txHash: Bytes32): Promise<JSONRPCReceipt | null> {
     const receipt = await this.web3.eth.getTransactionReceipt(txHash);
-    if(!receipt) {
+    if (!receipt) {
       return null;
     }
     const header = await this.getBlockHeader(receipt.blockNumber);
     const block = await this.getBlock(header);
-    const index = block.transactions.findIndex(tx => bufferToHex(tx.hash()) === txHash.toLowerCase());
-    if(index === -1) {
+    const index = block.transactions.findIndex(
+      tx => bufferToHex(tx.hash()) === txHash.toLowerCase(),
+    );
+    if (index === -1) {
       throw {
         code: INTERNAL_ERROR,
         message: 'the recipt provided by the RPC is invalid',
@@ -351,20 +357,18 @@ export class VerifyingProvider {
       to: tx.to?.toString() ?? null,
       // TODO: to verify the params below download all the tx recipts
       // of the block, compute the recipt root and verify the recipt
-      // root matches that in the blockHeader 
+      // root matches that in the blockHeader
       cumulativeGasUsed: '0x0',
       effectiveGasPrice: '0x0',
       gasUsed: '0x0',
       contractAddress: null,
       logs: [],
       logsBloom: '0x0',
-      status: receipt.status ? '0x1' : '0x0' // unverified!! 
-    }
+      status: receipt.status ? '0x1' : '0x0', // unverified!!
+    };
   }
 
-  private async getBlock(
-    header: BlockHeader
-  ) {
+  private async getBlock(header: BlockHeader) {
     const blockInfo = await this.web3.eth.getBlock(
       parseInt(header.number.toString()),
       true,
@@ -469,15 +473,12 @@ export class VerifyingProvider {
     return results;
   }
 
-  private async getVM(
-    tx: RPCTx,
-    header: BlockHeader,
-  ): Promise<VM> {
+  private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
     // forcefully set gasPrice to 0 to avoid out of gas error
     const _tx = {
       ...tx,
       from: tx.from ? tx.from : ZERO_ADDR,
-      gasPrice: 0, 
+      gasPrice: 0,
       gas: tx.gas ? tx.gas : bigIntToHex(header.gasLimit!),
     };
     const { accessList } = await this.web3.eth.createAccessList(

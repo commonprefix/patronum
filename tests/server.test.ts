@@ -20,25 +20,28 @@ async function main() {
     RPC_URL,
     BigInt(block.number),
     block.hash,
-    CHAIN
+    CHAIN,
   );
-  if(RPC_URL_WS) {
+  if (RPC_URL_WS) {
     const web3Sub = new Web3(RPC_URL_WS);
-    web3Sub.eth.subscribe('newBlockHeaders')
+    web3Sub.eth
+      .subscribe('newBlockHeaders')
       .on('connected', () => {
         console.log('Subscribed to new blockHeaders');
       })
-      .on('data', (blockHeader) => {
-        console.log(`Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`);
-        provider.update(blockHeader.hash, BigInt(blockHeader.number)); 
+      .on('data', blockHeader => {
+        console.log(
+          `Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`,
+        );
+        provider.update(blockHeader.hash, BigInt(blockHeader.number));
       })
       .on('error', console.error);
   } else {
     setInterval(async () => {
       const block = await web3.eth.getBlock('latest');
       console.log(`Recieved a new blockheader: ${block.number} ${block.hash}`);
-      provider.update(block.hash, BigInt(block.number)); 
-    }, POLLING_DELAY)
+      provider.update(block.hash, BigInt(block.number));
+    }, POLLING_DELAY);
   }
   await startServer(provider, PORT);
 }
