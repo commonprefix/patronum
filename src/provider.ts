@@ -45,6 +45,7 @@ import {
   INTERNAL_ERROR,
   INVALID_PARAMS,
   MAX_SOCKET,
+  MAX_BLOCK_FUTURE
 } from './constants';
 import {
   headerDataFromWeb3Response,
@@ -65,6 +66,7 @@ export class VerifyingProvider {
   common: Common;
 
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
+  private blockPromises: {[blockNumberHex: string]: {promise: Promise<void>, resolve: () => void }} = {};
   private blockHeaders: { [blockHash: string]: BlockHeader } = {};
   private latestBlockNumber: bigint;
 
@@ -123,8 +125,17 @@ export class VerifyingProvider {
         'Overriding an existing verified blockhash. Possibly the chain had a reorg',
       );
     }
+    const latestBlockNumber = this.latestBlockNumber;
     this.latestBlockNumber = blockNumber;
     this.blockHashes[blockNumberHex] = blockHash;
+    if(blockNumber > latestBlockNumber) {
+      for (let b = latestBlockNumber + BigInt(1); b <= blockNumber; b++) {
+        const bHex = bigIntToHex(b);
+        if(bHex in this.blockPromises) {
+          this.blockPromises[bHex].resolve();
+        }
+      }
+    }
   }
 
   async getBalance(addressHex: AddressHex, blockOpt: BlockOpt) {
@@ -397,8 +408,25 @@ export class VerifyingProvider {
 
   private async getBlockHeader(blockOpt: BlockOpt): Promise<BlockHeader> {
     const blockNumber = this.getBlockNumberByBlockOpt(blockOpt);
+    await this.waitForBlockNumber(blockNumber);
     const blockHash = await this.getBlockHash(blockNumber);
     return this.getBlockHeaderByHash(blockHash);
+  }
+
+  private async waitForBlockNumber(blockNumber: bigint) {
+    if(blockNumber <= this.latestBlockNumber)
+      return;
+    console.log(`waiting for blockNumber ${blockNumber}`);
+    const blockNumberHex = bigIntToHex(blockNumber);
+    if (!(blockNumberHex in this.blockPromises)) {
+      let r: () => void = () => {}; 
+      const p = new Promise<void>((resolve) => { r = resolve});
+      this.blockPromises[blockNumberHex] = {
+        promise: p,
+        resolve: r
+      };
+    }
+    return this.blockPromises[blockNumberHex].promise;
   }
 
   private getBlockNumberByBlockOpt(blockOpt: BlockOpt): bigint {
@@ -415,10 +443,10 @@ export class VerifyingProvider {
       return this.latestBlockNumber;
     } else {
       const blockNumber = BigInt(blockOpt as any);
-      if (blockNumber > this.latestBlockNumber) {
+      if (blockNumber > this.latestBlockNumber + MAX_BLOCK_FUTURE) {
         throw {
           code: INVALID_PARAMS,
-          message: 'specified block greater than current height',
+          message: 'specified block is too far in future',
         };
       } else if (blockNumber + MAX_BLOCK_HISTORY < this.latestBlockNumber) {
         throw {
