@@ -266,7 +266,7 @@ export class VerifyingProvider {
       transaction.gas = bigIntToHex(header.gasLimit);
     }
 
-    if (isFalsy(transaction.gasPrice)) {
+    if (isFalsy(transaction.gasPrice) || BigInt(transaction.gasPrice) === BigInt(0)) {
       transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
     }
 
@@ -474,7 +474,7 @@ export class VerifyingProvider {
   }
 
   private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
-    // forcefully set gasPrice to 0 to avoid out of gas error
+    // forcefully set gasPrice to 0 to avoid not enough balance error 
     const _tx = {
       ...tx,
       from: tx.from ? tx.from : ZERO_ADDR,
