@@ -1,5 +1,4 @@
 import {
-  isTruthy,
   setLengthLeft,
   toBuffer,
   bigIntToHex,
@@ -14,6 +13,8 @@ import {
   TypedTransaction,
 } from '@ethereumjs/tx';
 import { JSONRPCTx, JSONRPCBlock } from './types';
+
+const isTruthy = (val: any) => val !== undefined;
 
 // TODO: fix blockInfo type
 export function headerDataFromWeb3Response(blockInfo: any): HeaderData {

@@ -18,11 +18,16 @@ export type ExecutionInfo = {
   blockNumber: bigint;
 };
 
+export type AccessList = {address: AddressHex, storageKeys: Bytes32[]}[];
+
 export interface RPCTx {
   from?: string;
   to?: string;
   gas?: string;
   gasPrice?: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+  accessList?: AccessList;
   value?: string;
   data?: string;
 }

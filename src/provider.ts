@@ -12,14 +12,12 @@ import {
   toBuffer,
   TypeOutput,
   setLengthLeft,
-  isTruthy,
-  isFalsy,
   KECCAK256_NULL_S,
 } from '@ethereumjs/util';
 import { VM } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
 import { Blockchain } from '@ethereumjs/blockchain';
-import { Transaction, TransactionFactory } from '@ethereumjs/tx';
+import { TransactionFactory } from '@ethereumjs/tx';
 import {
   AddressHex,
   Bytes32,
@@ -246,17 +244,25 @@ export class VerifyingProvider {
   }
 
   async call(transaction: RPCTx, blockOpt: BlockOpt) {
+    try {
+      this.validateTx(transaction);
+    } catch(e) {
+      throw {
+        code: INVALID_PARAMS,
+        message: e.message
+      };
+    }
     const header = await this.getBlockHeader(blockOpt);
     const vm = await this.getVM(transaction, header);
-    const { from, to, gas: gasLimit, gasPrice, value, data } = transaction;
+    const { from, to, gas: gasLimit, gasPrice, maxPriorityFeePerGas, value, data } = transaction;
     try {
       const runCallOpts = {
-        caller: isTruthy(from) ? Address.fromString(from) : undefined,
-        to: isTruthy(to) ? Address.fromString(to) : undefined,
+        caller: from !== undefined ? Address.fromString(from) : undefined,
+        to: to !== undefined ? Address.fromString(to) : undefined,
         gasLimit: toType(gasLimit, TypeOutput.BigInt),
-        gasPrice: toType(gasPrice, TypeOutput.BigInt),
+        gasPrice: toType(gasPrice || maxPriorityFeePerGas, TypeOutput.BigInt),
         value: toType(value, TypeOutput.BigInt),
-        data: isTruthy(data) ? toBuffer(data) : undefined,
+        data: data !== undefined ? toBuffer(data) : undefined,
         block: { header },
       };
       const { execResult } = await vm.evm.runCall(runCallOpts);
@@ -269,20 +275,33 @@ export class VerifyingProvider {
     }
   }
 
-  async estimateGas(transaction: RPCTx, blockOpt?: BlockOpt) {
-    const header = await this.getBlockHeader(blockOpt ?? 'latest');
+  async estimateGas(transaction: RPCTx, blockOpt: BlockOpt = 'latest') {
+    try {
+      this.validateTx(transaction);
+    } catch(e) {
+      throw {
+        code: INVALID_PARAMS,
+        message: e.message
+      };
+    }
+    const header = await this.getBlockHeader(blockOpt);
 
-    if (isFalsy(transaction.gas)) {
+    if (transaction.gas == undefined) {
       // If no gas limit is specified use the last block gas limit as an upper bound.
       transaction.gas = bigIntToHex(header.gasLimit);
     }
 
-    if (isFalsy(transaction.gasPrice) || BigInt(transaction.gasPrice) === BigInt(0)) {
-      transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
+    const txType = BigInt(transaction.maxFeePerGas || transaction.maxPriorityFeePerGas ? 2 : (transaction.accessList ? 1 : 0)); 
+    if (txType == BigInt(2)) {
+      transaction.maxFeePerGas = transaction.maxFeePerGas || bigIntToHex(header.baseFeePerGas!);
+    } else {
+      if (transaction.gasPrice == undefined || BigInt(transaction.gasPrice) === BigInt(0)) {
+        transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
+      }
     }
 
-    const txData = { ...transaction, gasLimit: transaction.gas };
-    const tx = Transaction.fromTxData(txData, {
+    const txData = { ...transaction, type: bigIntToHex(txType), gasLimit: transaction.gas };
+    const tx = TransactionFactory.fromTxData(txData, {
       common: this.common,
       freeze: false,
     });
@@ -290,7 +309,7 @@ export class VerifyingProvider {
     const vm = await this.getVM(transaction, header);
 
     // set from address
-    const from = isTruthy(transaction.from)
+    const from = transaction.from !== undefined
       ? Address.fromString(transaction.from)
       : Address.zero();
     tx.getSenderAddress = () => {
@@ -377,6 +396,36 @@ export class VerifyingProvider {
       logsBloom: '0x0',
       status: receipt.status ? '0x1' : '0x0', // unverified!!
     };
+  }
+
+  private validateTx(tx: RPCTx) {
+    if (
+      tx.gasPrice !== undefined &&
+      tx.maxFeePerGas !== undefined
+    ) {
+      throw new Error(
+        'Cannot send both gasPrice and maxFeePerGas params'
+      );
+    }
+
+    if (
+      tx.gasPrice !== undefined &&
+      tx.maxPriorityFeePerGas !== undefined
+    ) {
+      throw new Error(
+        'Cannot send both gasPrice and maxPriorityFeePerGas'
+      );
+    }
+
+    if (
+      tx.maxFeePerGas !== undefined &&
+      tx.maxPriorityFeePerGas !== undefined &&
+      BigInt(tx.maxPriorityFeePerGas) > BigInt(tx.maxFeePerGas)
+    ) {
+      throw new Error(
+        `maxPriorityFeePerGas (${tx.maxPriorityFeePerGas.toString()}) is bigger than maxFeePerGas (${tx.maxFeePerGas.toString()})`
+      );
+    }
   }
 
   private async getBlock(header: BlockHeader) {
@@ -504,8 +553,10 @@ export class VerifyingProvider {
   private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
     // forcefully set gasPrice to 0 to avoid not enough balance error 
     const _tx = {
-      ...tx,
+      to: tx.to,
       from: tx.from ? tx.from : ZERO_ADDR,
+      data: tx.data,
+      value: tx.value,
       gasPrice: 0,
       gas: tx.gas ? tx.gas : bigIntToHex(header.gasLimit!),
     };
@@ -672,7 +723,7 @@ export class VerifyingProvider {
     const account = Account.fromAccountData({
       nonce: BigInt(proof.nonce),
       balance: BigInt(proof.balance),
-      stateRoot: proof.storageHash,
+      storageRoot: proof.storageHash,
       codeHash: proof.codeHash,
     });
     const isAccountValid = account
