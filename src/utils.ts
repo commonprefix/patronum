@@ -14,7 +14,7 @@ import {
 } from '@ethereumjs/tx';
 import { JSONRPCTx, JSONRPCBlock } from './types';
 
-const isTruthy = (val: any) => val !== undefined;
+const isTruthy = (val: any) => !!val;
 
 // TODO: fix blockInfo type
 export function headerDataFromWeb3Response(blockInfo: any): HeaderData {

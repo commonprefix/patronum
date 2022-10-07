@@ -257,12 +257,12 @@ export class VerifyingProvider {
     const { from, to, gas: gasLimit, gasPrice, maxPriorityFeePerGas, value, data } = transaction;
     try {
       const runCallOpts = {
-        caller: from !== undefined ? Address.fromString(from) : undefined,
-        to: to !== undefined ? Address.fromString(to) : undefined,
+        caller: from ? Address.fromString(from) : undefined,
+        to: to ? Address.fromString(to) : undefined,
         gasLimit: toType(gasLimit, TypeOutput.BigInt),
         gasPrice: toType(gasPrice || maxPriorityFeePerGas, TypeOutput.BigInt),
         value: toType(value, TypeOutput.BigInt),
-        data: data !== undefined ? toBuffer(data) : undefined,
+        data: data ? toBuffer(data) : undefined,
         block: { header },
       };
       const { execResult } = await vm.evm.runCall(runCallOpts);
@@ -309,7 +309,7 @@ export class VerifyingProvider {
     const vm = await this.getVM(transaction, header);
 
     // set from address
-    const from = transaction.from !== undefined
+    const from = transaction.from
       ? Address.fromString(transaction.from)
       : Address.zero();
     tx.getSenderAddress = () => {
@@ -441,14 +441,14 @@ export class VerifyingProvider {
     if (!block.header.hash().equals(header.hash())) {
       throw {
         error: INTERNAL_ERROR,
-        message: `blockhash doest match the blockData provided by the RPC`,
+        message: `BN(${header.number}): blockhash doest match the blockData provided by the RPC`,
       };
     }
 
     if (!(await block.validateTransactionsTrie())) {
       throw {
         error: INTERNAL_ERROR,
-        message: `transactionTree doesn't match the transactions privided by the RPC`,
+        message: `BN(${header.number}): transactionTree doesn't match the transactions provided by the RPC`,
       };
     }
 
