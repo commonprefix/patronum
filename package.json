@@ -1,6 +1,6 @@
 {
   "name": "@lightclients/patronum",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Patronum: Ethereum RPC proxy that verifies RPC responses against given trusted block hashes",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
