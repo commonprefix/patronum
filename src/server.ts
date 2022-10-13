@@ -126,5 +126,5 @@ export function getApp(provider: VerifyingProvider) {
 export async function startServer(provider: VerifyingProvider, port: number) {
   const app = await getApp(provider);
   app.listen(port);
-  console.log(`RPC Server started at port ${port}`);
+  console.log(`RPC Server started at http://localhost:${port}`);
 }
