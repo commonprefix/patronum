@@ -28,7 +28,7 @@ import {
   HexString,
   JSONRPCReceipt,
   AccessList,
-  GetProof
+  GetProof,
 } from './types';
 import {
   ZERO_ADDR,
@@ -356,10 +356,10 @@ export class VerifyingProvider {
     // TODO: brodcast tx directly to the mem pool?
     const { success } = await this.rpc.request({
       method: 'eth_sendRawTransaction',
-      params: [signedTx]
+      params: [signedTx],
     });
 
-    if(!success) {
+    if (!success) {
       throw {
         error: INTERNAL_ERROR,
         message: `RPC request failed`,
@@ -436,7 +436,7 @@ export class VerifyingProvider {
   private async getBlock(header: BlockHeader) {
     const { result: blockInfo, success } = await this.rpc.request({
       method: 'eth_getBlockByNumber',
-      params: [bigIntToHex(header.number), true]
+      params: [bigIntToHex(header.number), true],
     });
 
     if (!success) {
@@ -532,10 +532,10 @@ export class VerifyingProvider {
     };
     const { result, success } = await this.rpc.request({
       method: 'eth_createAccessList',
-      params: [_tx, bigIntToHex(header.number)]
+      params: [_tx, bigIntToHex(header.number)],
     });
 
-    if(!success) {
+    if (!success) {
       throw {
         error: INTERNAL_ERROR,
         message: `RPC request failed`,
@@ -565,18 +565,22 @@ export class VerifyingProvider {
         return [
           {
             method: 'eth_getProof',
-            params: [access.address, access.storageKeys, bigIntToHex(header.number)]
+            params: [
+              access.address,
+              access.storageKeys,
+              bigIntToHex(header.number),
+            ],
           },
           {
             method: 'eth_getCode',
-            params: [access.address, bigIntToHex(header.number)]
+            params: [access.address, bigIntToHex(header.number)],
           },
         ];
       })
       .flat();
     const rawResponse = await this.rpc.requestBatch(requests);
-    if(rawResponse.some(r => !r.success)) {
-       throw {
+    if (rawResponse.some(r => !r.success)) {
+      throw {
         error: INTERNAL_ERROR,
         message: `RPC request failed`,
       };
@@ -670,7 +674,7 @@ export class VerifyingProvider {
     if (!this.blockHeaders[blockHash]) {
       const { result: blockInfo, success } = await this.rpc.request({
         method: 'eth_getBlockByHash',
-        params: [blockHash, true]
+        params: [blockHash, true],
       });
 
       if (!success) {

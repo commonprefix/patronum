@@ -78,10 +78,10 @@ export class RPC {
       },
     ];
 
-    for(let i = retry; i > 0; i--) {
+    for (let i = retry; i > 0; i--) {
       const res = await this._request(request);
       if (res[0].success) return res[0];
-      else if(i == 1) {
+      else if (i == 1) {
         console.error(
           `RPC batch request failed after maximum retries: ${JSON.stringify(
             request,
@@ -141,8 +141,7 @@ export class RPC {
         this.provider.URL,
         requests.length === 1 ? requests[0] : requests,
       );
-      const results =
-        requests.length === 1 ? [response.data] : response.data;
+      const results = requests.length === 1 ? [response.data] : response.data;
       return results.map((r: any) => ({
         success: !r.error,
         result: r.error || r.result,
