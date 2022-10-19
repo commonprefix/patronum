@@ -18,7 +18,7 @@ export type ExecutionInfo = {
   blockNumber: bigint;
 };
 
-export type AccessList = {address: AddressHex, storageKeys: Bytes32[]}[];
+export type AccessList = { address: AddressHex; storageKeys: Bytes32[] }[];
 
 export interface RPCTx {
   from?: string;

@@ -1,4 +1,3 @@
-import http from 'http';
 import _ from 'lodash';
 import Web3 from 'web3';
 import { Trie } from '@ethereumjs/trie';
@@ -22,36 +21,30 @@ import {
   AddressHex,
   Bytes32,
   RPCTx,
-  Request,
-  AccountRequest,
-  CodeRequest,
-  Response,
   AccountResponse,
   CodeResponse,
-  RequestMethodCallback,
   Bytes,
-  GetProof,
   BlockNumber as BlockOpt,
-  Method,
   HexString,
   JSONRPCReceipt,
+  AccessList,
+  GetProof
 } from './types';
 import {
   ZERO_ADDR,
-  REQUEST_BATCH_SIZE,
   MAX_BLOCK_HISTORY,
   INTERNAL_ERROR,
   INVALID_PARAMS,
-  MAX_SOCKET,
-  MAX_BLOCK_FUTURE
+  MAX_BLOCK_FUTURE,
 } from './constants';
 import {
   headerDataFromWeb3Response,
   blockDataFromWeb3Response,
   toJSONRPCBlock,
 } from './utils';
+import { RPC } from './rpc';
 
-const bigIntToHex = (n: string | bigint): string =>
+const bigIntToHex = (n: string | bigint | number): string =>
   '0x' + BigInt(n).toString(16);
 
 const emptyAccountSerialize = new Account().serialize();
@@ -60,35 +53,15 @@ const emptyAccountSerialize = new Account().serialize();
 // TODO: if anything is accessed outside the accesslist the provider
 // should throw error
 export class VerifyingProvider {
-  web3: Web3;
   common: Common;
+  rpc: RPC;
 
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
-  private blockPromises: {[blockNumberHex: string]: {promise: Promise<void>, resolve: () => void }} = {};
+  private blockPromises: {
+    [blockNumberHex: string]: { promise: Promise<void>; resolve: () => void };
+  } = {};
   private blockHeaders: { [blockHash: string]: BlockHeader } = {};
   private latestBlockNumber: bigint;
-
-  private requestTypeToMethod: Record<
-    Request['type'],
-    (request: Request, callback: RequestMethodCallback) => Method
-  > = {
-    // Type errors ignored due to https://github.com/ChainSafe/web3.js/issues/4655
-    account: (request: AccountRequest, callback) =>
-      // @ts-ignore
-      this.web3.eth.getProof.request(
-        request.addressHex,
-        request.storageSlots,
-        bigIntToHex(request.blockNumber),
-        callback,
-      ),
-    code: (request: CodeRequest, callback) =>
-      // @ts-ignore
-      this.web3.eth.getCode.request(
-        request.addressHex,
-        bigIntToHex(request.blockNumber),
-        callback,
-      ),
-  };
 
   constructor(
     providerURL: string,
@@ -96,14 +69,7 @@ export class VerifyingProvider {
     blockHash: Bytes32,
     chain: bigint | Chain = Chain.Mainnet,
   ) {
-    this.web3 = new Web3(
-      new Web3.providers.HttpProvider(providerURL, {
-        keepAlive: true,
-        agent: {
-          http: new http.Agent({ keepAlive: true, maxSockets: MAX_SOCKET }),
-        },
-      }),
-    );
+    this.rpc = new RPC({ URL: providerURL });
     this.common = new Common({
       chain,
       // hardfork: Hardfork.ArrowGlacier,
@@ -126,10 +92,10 @@ export class VerifyingProvider {
     const latestBlockNumber = this.latestBlockNumber;
     this.latestBlockNumber = blockNumber;
     this.blockHashes[blockNumberHex] = blockHash;
-    if(blockNumber > latestBlockNumber) {
+    if (blockNumber > latestBlockNumber) {
       for (let b = latestBlockNumber + BigInt(1); b <= blockNumber; b++) {
         const bHex = bigIntToHex(b);
-        if(bHex in this.blockPromises) {
+        if (bHex in this.blockPromises) {
           this.blockPromises[bHex].resolve();
         }
       }
@@ -139,11 +105,16 @@ export class VerifyingProvider {
   async getBalance(addressHex: AddressHex, blockOpt: BlockOpt) {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
-    const proof = await this.web3.eth.getProof(
-      addressHex,
-      [],
-      bigIntToHex(header.number),
-    );
+    const { result: proof, success } = await this.rpc.request({
+      method: 'eth_getProof',
+      params: [addressHex, [], bigIntToHex(header.number)],
+    });
+    if (!success) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
     const isAccountCorrect = await this.verifyProof(
       address,
       [],
@@ -157,7 +128,7 @@ export class VerifyingProvider {
       };
     }
 
-    return this.web3.utils.numberToHex(proof.balance);
+    return bigIntToHex(proof.balance);
   }
 
   blockNumber(): HexString {
@@ -173,19 +144,24 @@ export class VerifyingProvider {
     blockOpt: BlockOpt,
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
-    const [accountProof, code] = (await this.fetchRequests([
+    const res = await this.rpc.requestBatch([
       {
-        type: 'account',
-        blockNumber: header.number,
-        storageSlots: [],
-        addressHex,
+        method: 'eth_getProof',
+        params: [addressHex, [], bigIntToHex(header.number)],
       },
       {
-        type: 'code',
-        blockNumber: header.number,
-        addressHex,
+        method: 'eth_getCode',
+        params: [addressHex, bigIntToHex(header.number)],
       },
-    ])) as [AccountResponse, CodeResponse];
+    ]);
+
+    if (res.some(r => !r.success)) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
+    const [accountProof, code] = [res[0].result, res[1].result];
 
     const address = Address.fromString(addressHex);
     const isAccountCorrect = await this.verifyProof(
@@ -221,11 +197,16 @@ export class VerifyingProvider {
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
-    const proof = await this.web3.eth.getProof(
-      addressHex,
-      [],
-      bigIntToHex(header.number),
-    );
+    const { result: proof, success } = await this.rpc.request({
+      method: 'eth_getProof',
+      params: [addressHex, [], bigIntToHex(header.number)],
+    });
+    if (!success) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
 
     const isAccountCorrect = await this.verifyProof(
       address,
@@ -246,15 +227,23 @@ export class VerifyingProvider {
   async call(transaction: RPCTx, blockOpt: BlockOpt) {
     try {
       this.validateTx(transaction);
-    } catch(e) {
+    } catch (e) {
       throw {
         code: INVALID_PARAMS,
-        message: e.message
+        message: e.message,
       };
     }
     const header = await this.getBlockHeader(blockOpt);
     const vm = await this.getVM(transaction, header);
-    const { from, to, gas: gasLimit, gasPrice, maxPriorityFeePerGas, value, data } = transaction;
+    const {
+      from,
+      to,
+      gas: gasLimit,
+      gasPrice,
+      maxPriorityFeePerGas,
+      value,
+      data,
+    } = transaction;
     try {
       const runCallOpts = {
         caller: from ? Address.fromString(from) : undefined,
@@ -278,10 +267,10 @@ export class VerifyingProvider {
   async estimateGas(transaction: RPCTx, blockOpt: BlockOpt = 'latest') {
     try {
       this.validateTx(transaction);
-    } catch(e) {
+    } catch (e) {
       throw {
         code: INVALID_PARAMS,
-        message: e.message
+        message: e.message,
       };
     }
     const header = await this.getBlockHeader(blockOpt);
@@ -291,16 +280,30 @@ export class VerifyingProvider {
       transaction.gas = bigIntToHex(header.gasLimit);
     }
 
-    const txType = BigInt(transaction.maxFeePerGas || transaction.maxPriorityFeePerGas ? 2 : (transaction.accessList ? 1 : 0)); 
+    const txType = BigInt(
+      transaction.maxFeePerGas || transaction.maxPriorityFeePerGas
+        ? 2
+        : transaction.accessList
+        ? 1
+        : 0,
+    );
     if (txType == BigInt(2)) {
-      transaction.maxFeePerGas = transaction.maxFeePerGas || bigIntToHex(header.baseFeePerGas!);
+      transaction.maxFeePerGas =
+        transaction.maxFeePerGas || bigIntToHex(header.baseFeePerGas!);
     } else {
-      if (transaction.gasPrice == undefined || BigInt(transaction.gasPrice) === BigInt(0)) {
+      if (
+        transaction.gasPrice == undefined ||
+        BigInt(transaction.gasPrice) === BigInt(0)
+      ) {
         transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
       }
     }
 
-    const txData = { ...transaction, type: bigIntToHex(txType), gasLimit: transaction.gas };
+    const txData = {
+      ...transaction,
+      type: bigIntToHex(txType),
+      gasLimit: transaction.gas,
+    };
     const tx = TransactionFactory.fromTxData(txData, {
       common: this.common,
       freeze: false,
@@ -351,9 +354,18 @@ export class VerifyingProvider {
 
   async sendRawTransaction(signedTx: string): Promise<string> {
     // TODO: brodcast tx directly to the mem pool?
-    this.web3.eth
-      .sendSignedTransaction(signedTx)
-      .on('error', err => console.error(err));
+    const { success } = await this.rpc.request({
+      method: 'eth_sendRawTransaction',
+      params: [signedTx]
+    });
+
+    if(!success) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
+
     const tx = TransactionFactory.fromSerializedData(toBuffer(signedTx), {
       common: this.common,
     });
@@ -361,8 +373,11 @@ export class VerifyingProvider {
   }
 
   async getTransactionReceipt(txHash: Bytes32): Promise<JSONRPCReceipt | null> {
-    const receipt = await this.web3.eth.getTransactionReceipt(txHash);
-    if (!receipt) {
+    const { result: receipt, success } = await this.rpc.request({
+      method: 'eth_getTransactionReceipt',
+      params: [txHash],
+    });
+    if (!(success && receipt)) {
       return null;
     }
     const header = await this.getBlockHeader(receipt.blockNumber);
@@ -380,7 +395,7 @@ export class VerifyingProvider {
 
     return {
       transactionHash: txHash,
-      transactionIndex: this.web3.utils.numberToHex(index),
+      transactionIndex: bigIntToHex(index),
       blockHash: bufferToHex(block.hash()),
       blockNumber: bigIntToHex(block.header.number),
       from: tx.getSenderAddress().toString(),
@@ -394,27 +409,17 @@ export class VerifyingProvider {
       contractAddress: null,
       logs: [],
       logsBloom: '0x0',
-      status: receipt.status ? '0x1' : '0x0', // unverified!!
+      status: BigInt(receipt.status) ? '0x1' : '0x0', // unverified!!
     };
   }
 
   private validateTx(tx: RPCTx) {
-    if (
-      tx.gasPrice !== undefined &&
-      tx.maxFeePerGas !== undefined
-    ) {
-      throw new Error(
-        'Cannot send both gasPrice and maxFeePerGas params'
-      );
+    if (tx.gasPrice !== undefined && tx.maxFeePerGas !== undefined) {
+      throw new Error('Cannot send both gasPrice and maxFeePerGas params');
     }
 
-    if (
-      tx.gasPrice !== undefined &&
-      tx.maxPriorityFeePerGas !== undefined
-    ) {
-      throw new Error(
-        'Cannot send both gasPrice and maxPriorityFeePerGas'
-      );
+    if (tx.gasPrice !== undefined && tx.maxPriorityFeePerGas !== undefined) {
+      throw new Error('Cannot send both gasPrice and maxPriorityFeePerGas');
     }
 
     if (
@@ -423,16 +428,23 @@ export class VerifyingProvider {
       BigInt(tx.maxPriorityFeePerGas) > BigInt(tx.maxFeePerGas)
     ) {
       throw new Error(
-        `maxPriorityFeePerGas (${tx.maxPriorityFeePerGas.toString()}) is bigger than maxFeePerGas (${tx.maxFeePerGas.toString()})`
+        `maxPriorityFeePerGas (${tx.maxPriorityFeePerGas.toString()}) is bigger than maxFeePerGas (${tx.maxFeePerGas.toString()})`,
       );
     }
   }
 
   private async getBlock(header: BlockHeader) {
-    const blockInfo = await this.web3.eth.getBlock(
-      parseInt(header.number.toString()),
-      true,
-    );
+    const { result: blockInfo, success } = await this.rpc.request({
+      method: 'eth_getBlockByNumber',
+      params: [bigIntToHex(header.number), true]
+    });
+
+    if (!success) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
     // TODO: add support for uncle headers; First fetch all the uncles
     // add it to the blockData, verify the uncles and use it
     const blockData = blockDataFromWeb3Response(blockInfo);
@@ -463,16 +475,17 @@ export class VerifyingProvider {
   }
 
   private async waitForBlockNumber(blockNumber: bigint) {
-    if(blockNumber <= this.latestBlockNumber)
-      return;
+    if (blockNumber <= this.latestBlockNumber) return;
     console.log(`waiting for blockNumber ${blockNumber}`);
     const blockNumberHex = bigIntToHex(blockNumber);
     if (!(blockNumberHex in this.blockPromises)) {
-      let r: () => void = () => {}; 
-      const p = new Promise<void>((resolve) => { r = resolve});
+      let r: () => void = () => {};
+      const p = new Promise<void>(resolve => {
+        r = resolve;
+      });
       this.blockPromises[blockNumberHex] = {
         promise: p,
-        resolve: r
+        resolve: r,
       };
     }
     return this.blockPromises[blockNumberHex].promise;
@@ -507,63 +520,29 @@ export class VerifyingProvider {
     }
   }
 
-  private constructRequestMethod(
-    request: Request,
-    callback: (error: Error, data: Response) => void,
-  ): Method {
-    return this.requestTypeToMethod[request.type](request, callback);
-  }
-
-  private async fetchRequests(requests: Request[]) {
-    const batch = new this.web3.BatchRequest();
-    const promises = requests.map(request => {
-      return new Promise<Response>((resolve, reject) => {
-        // Type error ignored due to https://github.com/ChainSafe/web3.js/issues/4655
-        const method = this.constructRequestMethod(
-          request,
-          (error: Error, data: Response) => {
-            if (error) reject(error);
-            resolve(data);
-          },
-        );
-        batch.add(method);
-      });
-    });
-    batch.execute();
-    return Promise.all(promises);
-  }
-
-  private async fetchRequestsInBatches(
-    requests: Request[],
-    batchSize: number,
-  ): Promise<Response[]> {
-    const batchedRequests = _.chunk(requests, batchSize);
-    // const tasks = batchedRequests.map(requestBatch =>
-    //   this.fetchRequests(requestBatch),
-    // );
-    // return flatten((await async.parallelLimit(tasks, RPC_PARALLEL_LIMIT)) as any);
-    const results: Response[] = [];
-    for (const requestBatch of batchedRequests) {
-      const res = await this.fetchRequests(requestBatch);
-      results.push(...res);
-    }
-    return results;
-  }
-
   private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
-    // forcefully set gasPrice to 0 to avoid not enough balance error 
+    // forcefully set gasPrice to 0 to avoid not enough balance error
     const _tx = {
       to: tx.to,
       from: tx.from ? tx.from : ZERO_ADDR,
       data: tx.data,
       value: tx.value,
-      gasPrice: 0,
+      gasPrice: '0x0',
       gas: tx.gas ? tx.gas : bigIntToHex(header.gasLimit!),
     };
-    const { accessList } = await this.web3.eth.createAccessList(
-      _tx,
-      bigIntToHex(header.number),
-    );
+    const { result, success } = await this.rpc.request({
+      method: 'eth_createAccessList',
+      params: [_tx, bigIntToHex(header.number)]
+    });
+
+    if(!success) {
+      throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
+
+    const accessList = result.accessList as AccessList;
     accessList.push({ address: _tx.from, storageKeys: [] });
     if (_tx.to && !accessList.some(a => a.address.toLowerCase() === _tx.to)) {
       accessList.push({ address: _tx.to, storageKeys: [] });
@@ -585,21 +564,25 @@ export class VerifyingProvider {
       .map(access => {
         return [
           {
-            type: 'account',
-            blockNumber: header.number,
-            storageSlots: access.storageKeys,
-            addressHex: access.address,
+            method: 'eth_getProof',
+            params: [access.address, access.storageKeys, bigIntToHex(header.number)]
           },
           {
-            type: 'code',
-            blockNumber: header.number,
-            addressHex: access.address,
+            method: 'eth_getCode',
+            params: [access.address, bigIntToHex(header.number)]
           },
         ];
       })
-      .flat() as Request[];
+      .flat();
+    const rawResponse = await this.rpc.requestBatch(requests);
+    if(rawResponse.some(r => !r.success)) {
+       throw {
+        error: INTERNAL_ERROR,
+        message: `RPC request failed`,
+      };
+    }
     const responses = _.chunk(
-      await this.fetchRequestsInBatches(requests, REQUEST_BATCH_SIZE),
+      rawResponse.map(r => r.result),
       2,
     ) as [AccountResponse, CodeResponse][];
 
@@ -685,7 +668,18 @@ export class VerifyingProvider {
 
   private async getBlockHeaderByHash(blockHash: Bytes32) {
     if (!this.blockHeaders[blockHash]) {
-      const blockInfo = await this.web3.eth.getBlock(blockHash);
+      const { result: blockInfo, success } = await this.rpc.request({
+        method: 'eth_getBlockByHash',
+        params: [blockHash, true]
+      });
+
+      if (!success) {
+        throw {
+          error: INTERNAL_ERROR,
+          message: `RPC request failed`,
+        };
+      }
+
       const headerData = headerDataFromWeb3Response(blockInfo);
       const header = BlockHeader.fromHeaderData(headerData);
 

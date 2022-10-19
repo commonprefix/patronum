@@ -98,7 +98,7 @@ export function getApp(provider: VerifyingProvider) {
 
   server.applyMiddleware(exceptionMiddleware);
 
-  app.use(bodyParser.json({limit: '100mb'}));
+  app.use(bodyParser.json({ limit: '100mb' }));
 
   app.use((_, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');

@@ -23,6 +23,8 @@
     "@ethereumjs/tx": "4.0.0",
     "@ethereumjs/util": "8.0.0",
     "@ethereumjs/vm": "6.0.0",
+    "@types/axios": "0.14.0",
+    "axios": "1.1.2",
     "json-rpc-2.0": "1.4.1",
     "lodash": "4.17.21",
     "rlp": "3.0.0",
