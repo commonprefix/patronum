@@ -68,13 +68,13 @@ export class RPC {
 
   private async _retryRequest(
     _request: RPCRequest,
-    retry: number = 5,
+    retry = 5,
   ): Promise<RPCResponse> {
     const request = [
       {
         ..._request,
         jsonrpc: '2.0',
-        id: Math.floor(Math.random() * 2 ** 64).toFixed(),
+        id: this.generateId(),
       },
     ];
 
@@ -94,14 +94,18 @@ export class RPC {
     throw new Error('RPC request failed');
   }
 
+  private generateId(): string {
+    return Math.floor(Math.random() * 2 ** 64).toFixed();
+  }
+
   private async _retryBatch(
     _requests: RPCRequest[],
-    retry: number = 5,
+    retry = 5,
   ): Promise<RPCResponse[]> {
     let requestsRaw: RPCRequestRaw[] = _requests.map(r => ({
       ...r,
       jsonrpc: '2.0',
-      id: Math.floor(Math.random() * 2 ** 64).toFixed(),
+      id: this.generateId(),
     }));
 
     const results: { [id: string]: RPCResponse } = {};
