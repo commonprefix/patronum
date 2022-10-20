@@ -5,9 +5,8 @@ import { RPCTx } from './types';
 import { INTERNAL_ERROR } from './constants';
 import { VerifyingProvider } from './provider';
 
-export function getApp(provider: VerifyingProvider) {
+export function getJSONRPCServer(provider: VerifyingProvider) {
   const server = new JSONRPCServer();
-  const app = express();
 
   server.addMethod(
     'eth_getBalance',
@@ -97,6 +96,12 @@ export function getApp(provider: VerifyingProvider) {
   };
 
   server.applyMiddleware(exceptionMiddleware);
+  return server;
+}
+
+export function getExpressApp(provider: VerifyingProvider) {
+  const app = express();
+  const server = getJSONRPCServer(provider);  
 
   app.use(bodyParser.json({limit: '100mb'}));
 
@@ -124,7 +129,7 @@ export function getApp(provider: VerifyingProvider) {
 }
 
 export async function startServer(provider: VerifyingProvider, port: number) {
-  const app = await getApp(provider);
+  const app = await getExpressApp(provider);
   app.listen(port);
   console.log(`RPC Server started at http://localhost:${port}`);
 }
