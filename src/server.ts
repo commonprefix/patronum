@@ -103,7 +103,7 @@ export function getExpressApp(provider: VerifyingProvider) {
   const app = express();
   const server = getJSONRPCServer(provider);  
 
-  app.use(bodyParser.json({limit: '100mb'}));
+  app.use(bodyParser.json({ limit: '100mb' }));
 
   app.use((_, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');

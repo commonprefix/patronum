@@ -23,12 +23,14 @@
     "@ethereumjs/tx": "4.0.0",
     "@ethereumjs/util": "8.0.0",
     "@ethereumjs/vm": "6.0.0",
+    "axios": "1.1.2",
     "json-rpc-2.0": "1.4.1",
     "lodash": "4.17.21",
     "rlp": "3.0.0",
     "web3": "1.7.5"
   },
   "devDependencies": {
+    "@types/axios": "0.14.0",
     "@types/decimal.js": "7.4.0",
     "@types/express": "4.17.13",
     "@types/lodash": "4.14.182",
