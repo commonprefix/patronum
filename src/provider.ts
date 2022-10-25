@@ -62,6 +62,7 @@ const emptyAccountSerialize = new Account().serialize();
 export class VerifyingProvider {
   web3: Web3;
   common: Common;
+  vm: VM | null = null;
 
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
   private blockPromises: {[blockNumberHex: string]: {promise: Promise<void>, resolve: () => void }} = {};
@@ -550,6 +551,21 @@ export class VerifyingProvider {
     return results;
   }
 
+  private async getVMCopy(): Promise<VM> {
+    if(this.vm === null) {
+      const blockchain = await Blockchain.create({ common: this.common });
+      // path the blockchain to return the correct blockhash
+      (blockchain as any).getBlock = async (blockId: number) => {
+        const _hash = toBuffer(await this.getBlockHash(BigInt(blockId)));
+        return {
+          hash: () => _hash,
+        };
+      };
+      this.vm = await VM.create({ common: this.common, blockchain });
+    }
+    return await this.vm!.copy();
+  }
+
   private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
     // forcefully set gasPrice to 0 to avoid not enough balance error 
     const _tx = {
@@ -569,16 +585,7 @@ export class VerifyingProvider {
       accessList.push({ address: _tx.to, storageKeys: [] });
     }
 
-    const blockchain = await Blockchain.create({ common: this.common });
-    // path the blockchain to return the correct blockhash
-    (blockchain as any).getBlock = async (blockId: number) => {
-      const _hash = toBuffer(await this.getBlockHash(BigInt(blockId)));
-      return {
-        hash: () => _hash,
-      };
-    };
-    const vm = await VM.create({ common: this.common, blockchain });
-
+    const vm = await this.getVMCopy();
     await vm.stateManager.checkpoint();
 
     const requests = accessList
