@@ -30,11 +30,10 @@ import {
   AccessList,
   GetProof,
 } from './types';
+import { InternalError, InvalidParamsError } from './errors';
 import {
   ZERO_ADDR,
   MAX_BLOCK_HISTORY,
-  INTERNAL_ERROR,
-  INVALID_PARAMS,
   MAX_BLOCK_FUTURE,
 } from './constants';
 import {
@@ -111,10 +110,7 @@ export class VerifyingProvider {
       params: [addressHex, [], bigIntToHex(header.number)],
     });
     if (!success) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
     const isAccountCorrect = await this.verifyProof(
       address,
@@ -123,10 +119,7 @@ export class VerifyingProvider {
       proof,
     );
     if (!isAccountCorrect) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `invalid account proof provided by the RPC`,
-      };
+      throw new InternalError('Invalid account proof provided by the RPC')
     }
 
     return bigIntToHex(proof.balance);
@@ -157,10 +150,7 @@ export class VerifyingProvider {
     ]);
 
     if (res.some(r => !r.success)) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
     const [accountProof, code] = [res[0].result, res[1].result];
 
@@ -172,21 +162,16 @@ export class VerifyingProvider {
       accountProof,
     );
     if (!isAccountCorrect) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `invalid account proof provided by the RPC`,
-      };
+      throw new InternalError(`invalid account proof provided by the RPC`)
     }
 
     const isCodeCorrect = await this.verifyCodeHash(
       code,
       accountProof.codeHash,
     );
+
     if (!isCodeCorrect) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `code privided by the RPC doesn't match the account's codeHash`,
-      };
+      throw new InternalError(`code privided by the RPC doesn't match the account's codeHash`)
     }
 
     return code;
@@ -203,10 +188,7 @@ export class VerifyingProvider {
       params: [addressHex, [], bigIntToHex(header.number)],
     });
     if (!success) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
 
     const isAccountCorrect = await this.verifyProof(
@@ -216,10 +198,7 @@ export class VerifyingProvider {
       proof,
     );
     if (!isAccountCorrect) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `invalid account proof provided by the RPC`,
-      };
+      throw new InternalError(`invalid account proof provided by the RPC`)
     }
 
     return bigIntToHex(proof.nonce.toString());
@@ -228,12 +207,10 @@ export class VerifyingProvider {
   async call(transaction: RPCTx, blockOpt: BlockOpt) {
     try {
       this.validateTx(transaction);
-    } catch (e) {
-      throw {
-        code: INVALID_PARAMS,
-        message: e.message,
-      };
+    } catch(e) {
+      throw new InvalidParamsError(e.message)
     }
+
     const header = await this.getBlockHeader(blockOpt);
     const vm = await this.getVM(transaction, header);
     const {
@@ -256,23 +233,18 @@ export class VerifyingProvider {
         block: { header },
       };
       const { execResult } = await vm.evm.runCall(runCallOpts);
+
       return bufferToHex(execResult.returnValue);
     } catch (error: any) {
-      throw {
-        code: INTERNAL_ERROR,
-        message: error.message.toString(),
-      };
+      throw new InternalError(error.message.toString())
     }
   }
 
   async estimateGas(transaction: RPCTx, blockOpt: BlockOpt = 'latest') {
     try {
       this.validateTx(transaction);
-    } catch (e) {
-      throw {
-        code: INVALID_PARAMS,
-        message: e.message,
-      };
+    } catch(e) {
+      throw new InvalidParamsError(e.message)
     }
     const header = await this.getBlockHeader(blockOpt);
 
@@ -330,10 +302,7 @@ export class VerifyingProvider {
       });
       return bigIntToHex(totalGasSpent);
     } catch (error: any) {
-      throw {
-        code: INTERNAL_ERROR,
-        message: error.message.toString(),
-      };
+      throw new InternalError(error.message.toString())
     }
   }
 
@@ -361,10 +330,7 @@ export class VerifyingProvider {
     });
 
     if (!success) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
 
     const tx = TransactionFactory.fromSerializedData(toBuffer(signedTx), {
@@ -387,10 +353,7 @@ export class VerifyingProvider {
       tx => bufferToHex(tx.hash()) === txHash.toLowerCase(),
     );
     if (index === -1) {
-      throw {
-        code: INTERNAL_ERROR,
-        message: 'the recipt provided by the RPC is invalid',
-      };
+      throw new InternalError('the recipt provided by the RPC is invalid')
     }
     const tx = block.transactions[index];
 
@@ -441,10 +404,7 @@ export class VerifyingProvider {
     });
 
     if (!success) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
     // TODO: add support for uncle headers; First fetch all the uncles
     // add it to the blockData, verify the uncles and use it
@@ -452,17 +412,11 @@ export class VerifyingProvider {
     const block = Block.fromBlockData(blockData, { common: this.common });
 
     if (!block.header.hash().equals(header.hash())) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `BN(${header.number}): blockhash doest match the blockData provided by the RPC`,
-      };
+      throw new InternalError(`BN(${header.number}): blockhash doest match the blockData provided by the RPC`)
     }
 
     if (!(await block.validateTransactionsTrie())) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `BN(${header.number}): transactionTree doesn't match the transactions provided by the RPC`,
-      };
+      throw new InternalError(`transactionTree doesn't match the transactions privided by the RPC`)
     }
 
     return block;
@@ -498,24 +452,15 @@ export class VerifyingProvider {
       typeof blockOpt === 'string' &&
       ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)
     ) {
-      throw {
-        code: INVALID_PARAMS,
-        message: `"pending" is not yet supported`,
-      };
+      throw new InvalidParamsError(`"pending" is not yet supported`)
     } else if (blockOpt === 'latest') {
       return this.latestBlockNumber;
     } else {
       const blockNumber = BigInt(blockOpt as any);
       if (blockNumber > this.latestBlockNumber + MAX_BLOCK_FUTURE) {
-        throw {
-          code: INVALID_PARAMS,
-          message: 'specified block is too far in future',
-        };
+        throw new InvalidParamsError('specified block is too far in future')
       } else if (blockNumber + MAX_BLOCK_HISTORY < this.latestBlockNumber) {
-        throw {
-          code: INVALID_PARAMS,
-          message: `specified block cannot older that ${MAX_BLOCK_HISTORY}`,
-        };
+        throw new InvalidParamsError(`specified block cannot older that ${MAX_BLOCK_HISTORY}`)
       }
       return blockNumber;
     }
@@ -552,10 +497,7 @@ export class VerifyingProvider {
     });
 
     if (!success) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
 
     const accessList = result.accessList as AccessList;
@@ -587,10 +529,7 @@ export class VerifyingProvider {
       .flat();
     const rawResponse = await this.rpc.requestBatch(requests);
     if (rawResponse.some(r => !r.success)) {
-      throw {
-        error: INTERNAL_ERROR,
-        message: `RPC request failed`,
-      };
+      throw new InternalError(`RPC request failed`)
     }
     const responses = _.chunk(
       rawResponse.map(r => r.result),
@@ -615,18 +554,12 @@ export class VerifyingProvider {
         accountProof,
       );
       if (!isAccountCorrect) {
-        throw {
-          error: INTERNAL_ERROR,
-          message: `invalid account proof provided by the RPC`,
-        };
+        throw new InternalError(`invalid account proof provided by the RPC`)
       }
 
       const isCodeCorrect = await this.verifyCodeHash(code, codeHash);
       if (!isCodeCorrect) {
-        throw {
-          error: INTERNAL_ERROR,
-          message: `code privided by the RPC doesn't match the account's codeHash`,
-        };
+        throw new InternalError(`code privided by the RPC doesn't match the account's codeHash`)
       }
 
       const account = Account.fromAccountData({
@@ -685,20 +618,14 @@ export class VerifyingProvider {
       });
 
       if (!success) {
-        throw {
-          error: INTERNAL_ERROR,
-          message: `RPC request failed`,
-        };
+        throw new InternalError(`RPC request failed`)
       }
 
       const headerData = headerDataFromWeb3Response(blockInfo);
       const header = BlockHeader.fromHeaderData(headerData);
 
       if (!header.hash().equals(toBuffer(blockHash))) {
-        throw {
-          error: INTERNAL_ERROR,
-          message: `blockhash doesn't match the blockInfo provided by the RPC`,
-        };
+        throw new InternalError(`blockhash doesn't match the blockInfo provided by the RPC`)
       }
       this.blockHeaders[blockHash] = header;
     }
