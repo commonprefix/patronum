@@ -4,16 +4,19 @@ import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
 import { InvalidParamsError } from './errors';
 import { VerifyingProvider } from './provider';
+import { validators } from './validation';
 
 export function getJSONRPCServer(provider: VerifyingProvider) {
   const server = new JSONRPCServer();
 
-  server.addMethod(
-    'eth_getBalance',
-    async ([address, blockNumber]: [string, string]) => {
-      return await provider.getBalance(address, blockNumber);
-    },
-  );
+  server.addMethod('eth_getBalance', async (params: [string, string]) => {
+    validators.paramsLength(params, 2);
+    validators.address(params, 0);
+    validators.blockOption(params, 1);
+    const [address, blockOpt] = params;
+
+    provider.getBalance(address, blockOpt);
+  });
 
   server.addMethod('eth_blockNumber', () => {
     return provider.blockNumber();
@@ -23,50 +26,73 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return provider.chainId();
   });
 
-  server.addMethod(
-    'eth_getTransactionCount',
-    async ([address, blockNumber]: [string, string]) => {
-      return await provider.getTransactionCount(address, blockNumber);
-    },
-  );
+  server.addMethod('eth_getTransactionCount', async (params: [string, string]) => {
+    validators.paramsLength(params, 2);
+    validators.address(params, 0);
+    validators.blockOption(params, 1);
+    const [address, blockOpt] = params;
 
-  server.addMethod(
-    'eth_getCode',
-    async ([address, blockNumber]: [string, string]) => {
-      return await provider.getCode(address, blockNumber);
-    },
-  );
-
-  server.addMethod(
-    'eth_getBlockByNumber',
-    async ([blockNumber, includeTx]: [string, boolean]) => {
-      return await provider.getBlockByNumber(blockNumber, includeTx);
-    },
-  );
-
-  server.addMethod(
-    'eth_getBlockByHash',
-    async ([blockHash, includeTx]: [string, boolean]) => {
-      return await provider.getBlockByHash(blockHash, includeTx);
-    },
-  );
-
-  server.addMethod('eth_call', async ([tx, blockNumber]: [RPCTx, string]) => {
-    return await provider.call(tx, blockNumber);
+    return await provider.getTransactionCount(address, blockOpt);
   });
 
-  server.addMethod(
-    'eth_estimateGas',
-    async ([tx, blockNumber]: [RPCTx, string]) => {
-      return await provider.estimateGas(tx, blockNumber);
-    },
-  );
+  server.addMethod('eth_getCode', async (params: [string, string]) => {
+    validators.paramsLength(params, 2);
+    validators.address(params, 0);
+    validators.blockOption(params, 1);
+    const [address, blockOpt] = params;
 
-  server.addMethod('eth_getTransactionReceipt', async ([txHash]: [string]) => {
+    return await provider.getCode(address, blockOpt);
+  });
+
+  server.addMethod('eth_getBlockByNumber', async (params: [string, boolean]) => {
+    validators.paramsLength(params, 2);
+    validators.blockOption(params, 0);
+    validators.bool(params, 1);
+    const [blockOpt, includeTx] = params;
+
+    return await provider.getBlockByNumber(blockOpt, includeTx);
+  });
+
+  server.addMethod('eth_getBlockByHash', async (params: [string, boolean]) => {
+    validators.paramsLength(params, 2);
+    validators.blockHash(params, 0);
+    validators.bool(params, 1);
+    const [blockHash, includeTx] = params;
+
+    return await provider.getBlockByHash(blockHash, includeTx);
+  });
+
+  server.addMethod('eth_call', async (params: [RPCTx, string]) => {
+    validators.paramsLength(params, 2);
+    validators.transaction(params, 0);
+    validators.blockOption(params, 1);
+    const [tx, blockOpt] = params;
+
+    return await provider.call(tx, blockOpt);
+  });
+
+  server.addMethod('eth_estimateGas', async (params: [RPCTx, string]) => {
+    validators.paramsLength(params, 2);
+    validators.transaction(params, 0);
+    validators.blockOption(params, 1);
+    const [tx, blockOpt] = params;
+
+    return await provider.estimateGas(tx, blockOpt);
+  });
+
+  server.addMethod('eth_getTransactionReceipt', async (params: [string]) => {
+    validators.paramsLength(params, 1);
+    validators.hex(params, 0);
+    const [txHash] = params;
+
     return await provider.getTransactionReceipt(txHash);
   });
 
-  server.addMethod('eth_sendRawTransaction', async ([tx]: [string]) => {
+  server.addMethod('eth_sendRawTransaction', async (params: [string]) => {
+    validators.paramsLength(params, 1);
+    validators.hex(params, 0);
+    const [tx] = params;
+
     return await provider.sendRawTransaction(tx);
   });
 
@@ -74,17 +100,13 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return BigInt(provider.chainId()).toString();
   });
 
-  const exceptionMiddleware: JSONRPCServerMiddleware<void> = async (
-    next,
-    request,
-    serverParams,
-  ) => {
+  const exceptionMiddleware: JSONRPCServerMiddleware<void> = async (next, request, serverParams) => {
     try {
       console.log(`RPC Request ${request.method}`);
       return await next(request, serverParams);
     } catch (error) {
       console.log(error);
-      return error.code ? error : new InvalidParamsError(error.message)
+      return error.code ? error : new InvalidParamsError(error.message);
     }
   };
 
@@ -94,16 +116,13 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
 
 export function getExpressApp(provider: VerifyingProvider) {
   const app = express();
-  const server = getJSONRPCServer(provider);  
+  const server = getJSONRPCServer(provider);
 
   app.use(bodyParser.json({ limit: '100mb' }));
 
   app.use((_, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header(
-      'Access-Control-Allow-Headers',
-      'Origin, X-Requested-With, Content-Type, Accept',
-    );
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
   });
 
