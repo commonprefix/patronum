@@ -30,22 +30,11 @@ import {
   AccessList,
   GetProof,
 } from './types';
-import {
-  ZERO_ADDR,
-  MAX_BLOCK_HISTORY,
-  INTERNAL_ERROR,
-  INVALID_PARAMS,
-  MAX_BLOCK_FUTURE,
-} from './constants';
-import {
-  headerDataFromWeb3Response,
-  blockDataFromWeb3Response,
-  toJSONRPCBlock,
-} from './utils';
+import { ZERO_ADDR, MAX_BLOCK_HISTORY, INTERNAL_ERROR, INVALID_PARAMS, MAX_BLOCK_FUTURE } from './constants';
+import { headerDataFromWeb3Response, blockDataFromWeb3Response, toJSONRPCBlock } from './utils';
 import { RPC } from './rpc';
 
-const bigIntToHex = (n: string | bigint | number): string =>
-  '0x' + BigInt(n).toString(16);
+const bigIntToHex = (n: string | bigint | number): string => '0x' + BigInt(n).toString(16);
 
 const emptyAccountSerialize = new Account().serialize();
 
@@ -82,13 +71,8 @@ export class VerifyingProvider {
 
   update(blockHash: Bytes32, blockNumber: bigint) {
     const blockNumberHex = bigIntToHex(blockNumber);
-    if (
-      blockNumberHex in this.blockHashes &&
-      this.blockHashes[blockNumberHex] !== blockHash
-    ) {
-      console.log(
-        'Overriding an existing verified blockhash. Possibly the chain had a reorg',
-      );
+    if (blockNumberHex in this.blockHashes && this.blockHashes[blockNumberHex] !== blockHash) {
+      console.log('Overriding an existing verified blockhash. Possibly the chain had a reorg');
     }
     const latestBlockNumber = this.latestBlockNumber;
     this.latestBlockNumber = blockNumber;
@@ -116,12 +100,7 @@ export class VerifyingProvider {
         message: `RPC request failed`,
       };
     }
-    const isAccountCorrect = await this.verifyProof(
-      address,
-      [],
-      header.stateRoot,
-      proof,
-    );
+    const isAccountCorrect = await this.verifyProof(address, [], header.stateRoot, proof);
     if (!isAccountCorrect) {
       throw {
         error: INTERNAL_ERROR,
@@ -140,10 +119,7 @@ export class VerifyingProvider {
     return bigIntToHex(this.common.chainId());
   }
 
-  async getCode(
-    addressHex: AddressHex,
-    blockOpt: BlockOpt,
-  ): Promise<HexString> {
+  async getCode(addressHex: AddressHex, blockOpt: BlockOpt): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const res = await this.rpc.requestBatch([
       {
@@ -165,12 +141,7 @@ export class VerifyingProvider {
     const [accountProof, code] = [res[0].result, res[1].result];
 
     const address = Address.fromString(addressHex);
-    const isAccountCorrect = await this.verifyProof(
-      address,
-      [],
-      header.stateRoot,
-      accountProof,
-    );
+    const isAccountCorrect = await this.verifyProof(address, [], header.stateRoot, accountProof);
     if (!isAccountCorrect) {
       throw {
         error: INTERNAL_ERROR,
@@ -178,10 +149,7 @@ export class VerifyingProvider {
       };
     }
 
-    const isCodeCorrect = await this.verifyCodeHash(
-      code,
-      accountProof.codeHash,
-    );
+    const isCodeCorrect = await this.verifyCodeHash(code, accountProof.codeHash);
     if (!isCodeCorrect) {
       throw {
         error: INTERNAL_ERROR,
@@ -192,10 +160,7 @@ export class VerifyingProvider {
     return code;
   }
 
-  async getTransactionCount(
-    addressHex: AddressHex,
-    blockOpt: BlockOpt,
-  ): Promise<HexString> {
+  async getTransactionCount(addressHex: AddressHex, blockOpt: BlockOpt): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
     const { result: proof, success } = await this.rpc.request({
@@ -209,12 +174,7 @@ export class VerifyingProvider {
       };
     }
 
-    const isAccountCorrect = await this.verifyProof(
-      address,
-      [],
-      header.stateRoot,
-      proof,
-    );
+    const isAccountCorrect = await this.verifyProof(address, [], header.stateRoot, proof);
     if (!isAccountCorrect) {
       throw {
         error: INTERNAL_ERROR,
@@ -236,15 +196,7 @@ export class VerifyingProvider {
     }
     const header = await this.getBlockHeader(blockOpt);
     const vm = await this.getVM(transaction, header);
-    const {
-      from,
-      to,
-      gas: gasLimit,
-      gasPrice,
-      maxPriorityFeePerGas,
-      value,
-      data,
-    } = transaction;
+    const { from, to, gas: gasLimit, gasPrice, maxPriorityFeePerGas, value, data } = transaction;
     try {
       const runCallOpts = {
         caller: from ? Address.fromString(from) : undefined,
@@ -282,20 +234,12 @@ export class VerifyingProvider {
     }
 
     const txType = BigInt(
-      transaction.maxFeePerGas || transaction.maxPriorityFeePerGas
-        ? 2
-        : transaction.accessList
-        ? 1
-        : 0,
+      transaction.maxFeePerGas || transaction.maxPriorityFeePerGas ? 2 : transaction.accessList ? 1 : 0,
     );
     if (txType == BigInt(2)) {
-      transaction.maxFeePerGas =
-        transaction.maxFeePerGas || bigIntToHex(header.baseFeePerGas!);
+      transaction.maxFeePerGas = transaction.maxFeePerGas || bigIntToHex(header.baseFeePerGas!);
     } else {
-      if (
-        transaction.gasPrice == undefined ||
-        BigInt(transaction.gasPrice) === BigInt(0)
-      ) {
+      if (transaction.gasPrice == undefined || BigInt(transaction.gasPrice) === BigInt(0)) {
         transaction.gasPrice = bigIntToHex(header.baseFeePerGas!);
       }
     }
@@ -313,9 +257,7 @@ export class VerifyingProvider {
     const vm = await this.getVM(transaction, header);
 
     // set from address
-    const from = transaction.from
-      ? Address.fromString(transaction.from)
-      : Address.zero();
+    const from = transaction.from ? Address.fromString(transaction.from) : Address.zero();
     tx.getSenderAddress = () => {
       return from;
     };
@@ -383,9 +325,7 @@ export class VerifyingProvider {
     }
     const header = await this.getBlockHeader(receipt.blockNumber);
     const block = await this.getBlock(header);
-    const index = block.transactions.findIndex(
-      tx => bufferToHex(tx.hash()) === txHash.toLowerCase(),
-    );
+    const index = block.transactions.findIndex(tx => bufferToHex(tx.hash()) === txHash.toLowerCase());
     if (index === -1) {
       throw {
         code: INTERNAL_ERROR,
@@ -494,10 +434,7 @@ export class VerifyingProvider {
 
   private getBlockNumberByBlockOpt(blockOpt: BlockOpt): bigint {
     // TODO: add support for blockOpts below
-    if (
-      typeof blockOpt === 'string' &&
-      ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)
-    ) {
+    if (typeof blockOpt === 'string' && ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)) {
       throw {
         code: INVALID_PARAMS,
         message: `"pending" is not yet supported`,
@@ -522,7 +459,7 @@ export class VerifyingProvider {
   }
 
   private async getVMCopy(): Promise<VM> {
-    if(this.vm === null) {
+    if (this.vm === null) {
       const blockchain = await Blockchain.create({ common: this.common });
       // path the blockchain to return the correct blockhash
       (blockchain as any).getBlock = async (blockId: number) => {
@@ -572,11 +509,7 @@ export class VerifyingProvider {
         return [
           {
             method: 'eth_getProof',
-            params: [
-              access.address,
-              access.storageKeys,
-              bigIntToHex(header.number),
-            ],
+            params: [access.address, access.storageKeys, bigIntToHex(header.number)],
           },
           {
             method: 'eth_getCode',
@@ -600,20 +533,10 @@ export class VerifyingProvider {
     for (let i = 0; i < accessList.length; i++) {
       const { address: addressHex, storageKeys } = accessList[i];
       const [accountProof, code] = responses[i];
-      const {
-        nonce,
-        balance,
-        codeHash,
-        storageProof: storageAccesses,
-      } = accountProof;
+      const { nonce, balance, codeHash, storageProof: storageAccesses } = accountProof;
       const address = Address.fromString(addressHex);
 
-      const isAccountCorrect = await this.verifyProof(
-        address,
-        storageKeys,
-        header.stateRoot,
-        accountProof,
-      );
+      const isAccountCorrect = await this.verifyProof(address, storageKeys, header.stateRoot, accountProof);
       if (!isAccountCorrect) {
         throw {
           error: INTERNAL_ERROR,
@@ -645,16 +568,14 @@ export class VerifyingProvider {
         );
       }
 
-      if (code !== '0x')
-        await vm.stateManager.putContractCode(address, toBuffer(code));
+      if (code !== '0x') await vm.stateManager.putContractCode(address, toBuffer(code));
     }
     await vm.stateManager.commit();
     return vm;
   }
 
   private async getBlockHash(blockNumber: bigint) {
-    if (blockNumber > this.latestBlockNumber)
-      throw new Error('cannot return blockhash for a blocknumber in future');
+    if (blockNumber > this.latestBlockNumber) throw new Error('cannot return blockhash for a blocknumber in future');
     // TODO: fetch the blockHeader is batched request
     let lastVerifiedBlockNumber = this.latestBlockNumber;
     while (lastVerifiedBlockNumber > blockNumber) {
@@ -663,13 +584,8 @@ export class VerifyingProvider {
       lastVerifiedBlockNumber--;
       const parentBlockHash = bufferToHex(header.parentHash);
       const parentBlockNumberHex = bigIntToHex(lastVerifiedBlockNumber);
-      if (
-        parentBlockNumberHex in this.blockHashes &&
-        this.blockHashes[parentBlockNumberHex] !== parentBlockHash
-      ) {
-        console.log(
-          'Overriding an existing verified blockhash. Possibly the chain had a reorg',
-        );
+      if (parentBlockNumberHex in this.blockHashes && this.blockHashes[parentBlockNumberHex] !== parentBlockHash) {
+        console.log('Overriding an existing verified blockhash. Possibly the chain had a reorg');
       }
       this.blockHashes[parentBlockNumberHex] = parentBlockHash;
     }
@@ -706,10 +622,7 @@ export class VerifyingProvider {
   }
 
   private verifyCodeHash(code: Bytes, codeHash: Bytes32): boolean {
-    return (
-      (code === '0x' && codeHash === '0x' + KECCAK256_NULL_S) ||
-      Web3.utils.keccak256(code) === codeHash
-    );
+    return (code === '0x' && codeHash === '0x' + KECCAK256_NULL_S) || Web3.utils.keccak256(code) === codeHash;
   }
 
   private async verifyProof(
@@ -731,16 +644,12 @@ export class VerifyingProvider {
       storageRoot: proof.storageHash,
       codeHash: proof.codeHash,
     });
-    const isAccountValid = account
-      .serialize()
-      .equals(expectedAccountRLP ? expectedAccountRLP : emptyAccountSerialize);
+    const isAccountValid = account.serialize().equals(expectedAccountRLP ? expectedAccountRLP : emptyAccountSerialize);
     if (!isAccountValid) return false;
 
     for (let i = 0; i < storageKeys.length; i++) {
       const sp = proof.storageProof[i];
-      const key = Web3.utils.keccak256(
-        bufferToHex(setLengthLeft(toBuffer(storageKeys[i]), 32)),
-      );
+      const key = Web3.utils.keccak256(bufferToHex(setLengthLeft(toBuffer(storageKeys[i]), 32)));
       const expectedStorageRLP = await trie.verifyProof(
         toBuffer(proof.storageHash),
         toBuffer(key),
@@ -748,8 +657,7 @@ export class VerifyingProvider {
       );
       const isStorageValid =
         (!expectedStorageRLP && sp.value === '0x0') ||
-        (!!expectedStorageRLP &&
-          expectedStorageRLP.equals(rlp.encode(sp.value)));
+        (!!expectedStorageRLP && expectedStorageRLP.equals(rlp.encode(sp.value)));
       if (!isStorageValid) return false;
     }
 
