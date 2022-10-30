@@ -57,7 +57,7 @@ export const validators = {
     const blockHash = params[index].substring(2);
 
     if (!/^[0-9a-fA-F]+$/.test(blockHash) || blockHash.length !== 64) {
-      return new InvalidParamsError(`invalid argument ${index}: invalid block hash`);
+      throw new InvalidParamsError(`invalid argument ${index}: invalid block hash`);
     }
   },
   /**
@@ -72,21 +72,24 @@ export const validators = {
 
     const blockOption = params[index];
 
-    if (!['latest', 'earliest', 'pending'].includes(blockOption)) {
-      if (blockOption.substr(0, 2) === '0x') {
-        const hash = this.blockHash([blockOption], 0);
-        // todo: make integer validator?
-        const integer = this.hex([blockOption], 0);
-        // valid if undefined
-        if (hash === undefined || integer === undefined) {
-          // valid
-          return;
-        }
-      }
-      return new InvalidParamsError(
-        `invalid argument ${index}: block option must be a valid 0x-prefixed block hash or hex integer, or "latest", "earliest" or "pending"`,
-      );
+    console.log(blockOption);
+    if (['latest', 'earliest', 'pending'].includes(blockOption)) {
+      return;
     }
+
+    if (blockOption.substr(0, 2) === '0x') {
+      const hash = this.blockHash([blockOption], 0);
+      // todo: make integer validator?
+      const integer = this.hex([blockOption], 0);
+      // valid if undefined
+      if (hash === undefined || integer === undefined) {
+        return;
+      }
+    }
+
+    throw new InvalidParamsError(
+      `invalid argument ${index}: block option must be a valid 0x-prefixed block hash or hex integer, or "latest", "earliest" or "pending"`,
+    );
   },
 
   /**
@@ -96,7 +99,7 @@ export const validators = {
    */
   bool(params: any[], index: number) {
     if (typeof params[index] !== 'boolean') {
-      return new InvalidParamsError(`invalid argument ${index}: argument is not boolean`);
+      throw new InvalidParamsError(`invalid argument ${index}: argument is not boolean`);
     }
   },
 
@@ -113,7 +116,7 @@ export const validators = {
 
   transaction(params: any[], index: number) {
     if (typeof params[index] !== 'object') {
-      return new InvalidParamsError(`invalid argument ${index}: argument must be an object`);
+      throw new InvalidParamsError(`invalid argument ${index}: argument must be an object`);
     }
 
     const tx = params[index];

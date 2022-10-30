@@ -1,6 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
+import { JSONRPCErrorException, JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
 import { InvalidParamsError } from './errors';
 import { VerifyingProvider } from './provider';
@@ -105,8 +105,10 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
       console.log(`RPC Request ${request.method}`);
       return await next(request, serverParams);
     } catch (error) {
-      console.log(error);
-      return error.code ? error : new InvalidParamsError(error.message);
+      if (error instanceof JSONRPCErrorException) {
+        throw error;
+      }
+      throw new InvalidParamsError('invalid params');
     }
   };
 
