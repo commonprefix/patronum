@@ -1,5 +1,8 @@
 import { InvalidParamsError } from './errors';
 
+// Most of the validations are taken from:
+// https://github.com/ethereumjs/ethereumjs-monorepo/blob/master/packages/client/lib/rpc/validation.ts
+
 /**
  * @memberof module:rpc
  */
