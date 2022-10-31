@@ -11,11 +11,7 @@ Ethereum RPC proxy that verifies RPC responses against given trusted block hashe
 ```ts
 import { VerifyingProvider, startServer } from 'patronum';
 
-const provider = new VerifyingProvider(
-  trustlessRPCURL,
-  trustedBlockNumber,
-  trustedBlockHash,
-);
+const provider = new VerifyingProvider(trustlessRPCURL, trustedBlockNumber, trustedBlockHash);
 await startServer(provider, PORT);
 ```
 
@@ -24,11 +20,7 @@ await startServer(provider, PORT);
 ```ts
 import { VerifyingProvider } from 'patronum';
 
-const provider = new VerifyingProvider(
-  trustlessRPCURL,
-  trustedBlockNumber,
-  trustedBlockHash,
-);
+const provider = new VerifyingProvider(trustlessRPCURL, trustedBlockNumber, trustedBlockHash);
 
 console.log(await provider.getBalance(address, blockTag));
 
