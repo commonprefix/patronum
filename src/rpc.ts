@@ -139,7 +139,7 @@ export class RPC {
     return requestsRaw.map(r => results[r.id]);
   }
 
-  private async _request(requests: RPCRequestRaw[]): Promise<RPCResponse[]> {
+  protected async _request(requests: RPCRequestRaw[]): Promise<RPCResponse[]> {
     try {
       const response = await axios.post(
         this.provider.URL,

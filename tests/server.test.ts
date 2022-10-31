@@ -1,49 +1,147 @@
-// TODO: currently its just a demo script, make it a test
-import * as dotenv from 'dotenv';
-dotenv.config();
+require('dotenv').config();
+import { Express } from 'express';
+import { getExpressApp, VerifyingProvider } from '../src/index';
+import { MockRPC } from './mock';
+import { RPCClient } from './utils';
 
-import Web3 from 'web3';
-import { Chain } from '@ethereumjs/common';
-import { VerifyingProvider, startServer } from '../src';
-
+const BLOCK_HEIGHT = 15862076;
+const BLOCK_HEIGHT_HEX = '0x' + BigInt(BLOCK_HEIGHT).toString(16);
+const BLOCK_HASH =
+  '0xbee445ff49d7a72316d277371af43f01cd215a767a1fece92341362856b8c678';
 const RPC_URL = process.env.RPC_URL || '';
-const RPC_URL_WS = process.env.RPC_URL_WS;
-// Metamask doesn't allow same RPC URL for different networks
-const PORT = process.env.CHAIN_ID === '5' ? 8547 : 8546;
-const CHAIN = process.env.CHAIN_ID === '5' ? Chain.Goerli : Chain.Mainnet;
-const POLLING_DELAY = 13 * 1000; //13s
 
-async function main() {
-  const web3 = new Web3(RPC_URL);
-  const block = await web3.eth.getBlock('latest');
-  const provider = new VerifyingProvider(
-    RPC_URL,
-    BigInt(block.number),
-    block.hash,
-    CHAIN,
-  );
-  if (RPC_URL_WS) {
-    const web3Sub = new Web3(RPC_URL_WS);
-    web3Sub.eth
-      .subscribe('newBlockHeaders')
-      .on('connected', () => {
-        console.log('Subscribed to new blockHeaders');
-      })
-      .on('data', blockHeader => {
-        console.log(
-          `Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`,
-        );
-        provider.update(blockHeader.hash, BigInt(blockHeader.number));
-      })
-      .on('error', console.error);
-  } else {
-    setInterval(async () => {
-      const block = await web3.eth.getBlock('latest');
-      console.log(`Recieved a new blockheader: ${block.number} ${block.hash}`);
-      provider.update(block.hash, BigInt(block.number));
-    }, POLLING_DELAY);
-  }
-  await startServer(provider, PORT);
-}
+describe('Server', () => {
+  let app: Express;
+  let provider: VerifyingProvider;
+  let requestRPC: ReturnType<typeof RPCClient>;
 
-main();
+  beforeAll(() => {
+    provider = new VerifyingProvider(RPC_URL, BLOCK_HEIGHT, BLOCK_HASH);
+    provider.rpc = new MockRPC({ URL: RPC_URL });
+
+    app = getExpressApp(provider);
+    requestRPC = RPCClient(app);
+  });
+
+  describe('eth_getBalance', () => {
+    it('fetches balance', async () => {
+      const response = await requestRPC('eth_getBalance', [
+        '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
+        BLOCK_HEIGHT_HEX,
+      ]);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({
+        jsonrpc: '2.0',
+        id: 10,
+        result: '0x60e74857f86c4',
+      });
+    });
+  });
+
+  describe('eth_chainId', () => {
+    it('fetches chainId', async () => {
+      const response = await requestRPC('eth_chainId', []);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({ jsonrpc: '2.0', id: 10, result: '0x1' });
+    });
+  });
+
+  describe('eth_getTransactionCount', () => {
+    it('fetches transaction count', async () => {
+      const response = await requestRPC('eth_getTransactionCount', [
+        '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
+        BLOCK_HEIGHT_HEX,
+      ]);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({ jsonrpc: '2.0', id: 10, result: '0x2' });
+    });
+  });
+
+  describe('eth_getBlockByNumber', () => {
+    it('fetches the block without full transactions', async () => {
+      const response = await requestRPC('eth_getBlockByNumber', [
+        BLOCK_HEIGHT_HEX,
+        false,
+      ]);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.hash).toEqual(BLOCK_HASH);
+      expect(response.body.result.transactions).toBeInstanceOf(Array);
+      expect(
+        typeof response.body.result.transactions[0] == 'string',
+      ).toBeTruthy();
+    });
+
+    it('fetches the block with full transactions', async () => {
+      const response = await requestRPC('eth_getBlockByNumber', [
+        BLOCK_HEIGHT_HEX,
+        true,
+      ]);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.hash).toEqual(BLOCK_HASH);
+      expect(response.body.result.transactions).toBeInstanceOf(Array);
+      expect(
+        typeof response.body.result.transactions[0] == 'object',
+      ).toBeTruthy();
+    });
+  });
+
+  describe('eth_getBlockByHash', () => {
+    it('fetches the block without full transactions', async () => {
+      const response = await requestRPC('eth_getBlockByHash', [
+        BLOCK_HASH,
+        false,
+      ]);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.hash).toEqual(BLOCK_HASH);
+      expect(response.body.result.transactions).toBeInstanceOf(Array);
+      expect(
+        typeof response.body.result.transactions[0] == 'string',
+      ).toBeTruthy();
+    });
+
+    it('fetches the block with full transactions', async () => {
+      const response = await requestRPC('eth_getBlockByHash', [
+        BLOCK_HASH,
+        true,
+      ]);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.hash).toEqual(BLOCK_HASH);
+      expect(response.body.result.transactions).toBeInstanceOf(Array);
+      expect(
+        typeof response.body.result.transactions[0] == 'object',
+      ).toBeTruthy();
+    });
+  });
+
+  describe('eth_getCode', () => {
+    it('fetches 0x for peer account', async () => {
+      const response = await requestRPC('eth_getCode', [
+        '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
+        BLOCK_HEIGHT_HEX,
+      ]);
+      expect(response.body).toEqual({ jsonrpc: '2.0', id: 10, result: '0x' });
+    });
+
+    it('fetches bytecode for smart contract account', async () => {
+      const fixture = require('./fixtures/9eaacae0f81fb4d470d471f4aa57e237.json');
+      const response = await requestRPC('eth_getCode', [
+        '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552',
+        BLOCK_HEIGHT_HEX,
+      ]);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({
+        jsonrpc: '2.0',
+        id: 10,
+        result: fixture.responses[0].result,
+      });
+    });
+  });
+});
