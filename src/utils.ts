@@ -1,6 +1,17 @@
-import { setLengthLeft, toBuffer, bigIntToHex, bufferToHex, intToHex } from '@ethereumjs/util';
+import {
+  setLengthLeft,
+  toBuffer,
+  bigIntToHex,
+  bufferToHex,
+  intToHex,
+} from '@ethereumjs/util';
 import { HeaderData, BlockData, Block } from '@ethereumjs/block';
-import { TxData, AccessListEIP2930TxData, FeeMarketEIP1559TxData, TypedTransaction } from '@ethereumjs/tx';
+import {
+  TxData,
+  AccessListEIP2930TxData,
+  FeeMarketEIP1559TxData,
+  TypedTransaction,
+} from '@ethereumjs/tx';
 import { JSONRPCTx, JSONRPCBlock } from './types';
 
 const isTruthy = (val: any) => !!val;
@@ -23,20 +34,30 @@ export function headerDataFromWeb3Response(blockInfo: any): HeaderData {
     extraData: blockInfo.extraData,
     mixHash: (blockInfo as any).mixHash, // some reason the types are not up to date :(
     nonce: blockInfo.nonce,
-    baseFeePerGas: blockInfo.baseFeePerGas ? BigInt(blockInfo.baseFeePerGas) : undefined,
+    baseFeePerGas: blockInfo.baseFeePerGas
+      ? BigInt(blockInfo.baseFeePerGas)
+      : undefined,
   };
 }
 
-export function txDataFromWeb3Response(txInfo: any): TxData | AccessListEIP2930TxData | FeeMarketEIP1559TxData {
+export function txDataFromWeb3Response(
+  txInfo: any,
+): TxData | AccessListEIP2930TxData | FeeMarketEIP1559TxData {
   return {
     ...txInfo,
     data: txInfo.input,
     gasPrice: BigInt(txInfo.gasPrice),
     gasLimit: txInfo.gas,
-    to: isTruthy(txInfo.to) ? setLengthLeft(toBuffer(txInfo.to), 20) : undefined,
+    to: isTruthy(txInfo.to)
+      ? setLengthLeft(toBuffer(txInfo.to), 20)
+      : undefined,
     value: BigInt(txInfo.value),
-    maxFeePerGas: isTruthy(txInfo.maxFeePerGas) ? BigInt(txInfo.maxFeePerGas) : undefined,
-    maxPriorityFeePerGas: isTruthy(txInfo.maxPriorityFeePerGas) ? BigInt(txInfo.maxPriorityFeePerGas) : undefined,
+    maxFeePerGas: isTruthy(txInfo.maxFeePerGas)
+      ? BigInt(txInfo.maxFeePerGas)
+      : undefined,
+    maxPriorityFeePerGas: isTruthy(txInfo.maxPriorityFeePerGas)
+      ? BigInt(txInfo.maxPriorityFeePerGas)
+      : undefined,
   };
 }
 
@@ -47,7 +68,11 @@ export function blockDataFromWeb3Response(blockInfo: any): BlockData {
   };
 }
 
-export function toJSONRPCTx(tx: TypedTransaction, block?: Block, txIndex?: number): JSONRPCTx {
+export function toJSONRPCTx(
+  tx: TypedTransaction,
+  block?: Block,
+  txIndex?: number,
+): JSONRPCTx {
   const txJSON = tx.toJSON();
   return {
     blockHash: block ? bufferToHex(block.hash()) : null,
@@ -81,7 +106,9 @@ export function toJSONRPCBlock(
   const json = block.toJSON();
   const header = json!.header!;
   const transactions = block.transactions.map((tx, txIndex) =>
-    includeTransactions ? toJSONRPCTx(tx, block, txIndex) : bufferToHex(tx.hash()),
+    includeTransactions
+      ? toJSONRPCTx(tx, block, txIndex)
+      : bufferToHex(tx.hash()),
   );
   return {
     number: header.number!,
