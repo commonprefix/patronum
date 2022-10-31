@@ -2,7 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import { JSONRPCErrorException, JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
-import { InvalidParamsError } from './errors';
+import { InternalError } from './errors';
 import { VerifyingProvider } from './provider';
 import { validators } from './validation';
 
@@ -108,7 +108,7 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
       if (error instanceof JSONRPCErrorException) {
         throw error;
       }
-      throw new InvalidParamsError('invalid params');
+      throw new InternalError(error.message);
     }
   };
 

@@ -139,9 +139,8 @@ export class VerifyingProvider {
     }
 
     const isCodeCorrect = await this.verifyCodeHash(code, accountProof.codeHash);
-
     if (!isCodeCorrect) {
-      throw new InternalError(`code privided by the RPC doesn't match the account's codeHash`);
+      throw new InternalError(`code provided by the RPC doesn't match the account's codeHash`);
     }
 
     return code;
@@ -358,7 +357,7 @@ export class VerifyingProvider {
     }
 
     if (!(await block.validateTransactionsTrie())) {
-      throw new InternalError(`transactionTree doesn't match the transactions privided by the RPC`);
+      throw new InternalError(`transactionTree doesn't match the transactions provided by the RPC`);
     }
 
     return block;
@@ -390,7 +389,10 @@ export class VerifyingProvider {
 
   private getBlockNumberByBlockOpt(blockOpt: BlockOpt): bigint {
     // TODO: add support for blockOpts below
-    if (typeof blockOpt === 'string' && ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)) {
+    if (
+      typeof blockOpt === 'string' &&
+      ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)
+    ) {
       throw new InvalidParamsError(`"pending" is not yet supported`);
     } else if (blockOpt === 'latest') {
       return this.latestBlockNumber;
@@ -484,7 +486,7 @@ export class VerifyingProvider {
 
       const isCodeCorrect = await this.verifyCodeHash(code, codeHash);
       if (!isCodeCorrect) {
-        throw new InternalError(`code privided by the RPC doesn't match the account's codeHash`);
+        throw new InternalError(`code provided by the RPC doesn't match the account's codeHash`);
       }
 
       const account = Account.fromAccountData({
