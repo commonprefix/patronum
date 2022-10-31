@@ -5,7 +5,9 @@ import { MockRPC } from './mock';
 import { RPCClient } from './utils';
 
 const BLOCK_HEIGHT = 15862076;
-const BLOCK_HASH = '0xbee445ff49d7a72316d277371af43f01cd215a767a1fece92341362856b8c678';
+const BLOCK_HEIGHT_HEX = '0x' + BigInt(BLOCK_HEIGHT).toString(16);
+const BLOCK_HASH =
+  '0xbee445ff49d7a72316d277371af43f01cd215a767a1fece92341362856b8c678';
 const RPC_URL = process.env.RPC_URL || '';
 
 describe('Server', () => {
@@ -14,11 +16,7 @@ describe('Server', () => {
   let requestRPC: ReturnType<typeof RPCClient>;
 
   beforeAll(() => {
-    provider = new VerifyingProvider(
-      RPC_URL,
-      BLOCK_HEIGHT,
-      BLOCK_HASH,
-    );
+    provider = new VerifyingProvider(RPC_URL, BLOCK_HEIGHT, BLOCK_HASH);
     provider.rpc = new MockRPC({ URL: RPC_URL });
 
     app = getExpressApp(provider);
@@ -29,7 +27,7 @@ describe('Server', () => {
     it('fetches balance', async () => {
       const response = await requestRPC('eth_getBalance', [
         '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
       ]);
 
       expect(response.status).toEqual(200);
@@ -54,7 +52,7 @@ describe('Server', () => {
     it('fetches transaction count', async () => {
       const response = await requestRPC('eth_getTransactionCount', [
         '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
       ]);
 
       expect(response.status).toEqual(200);
@@ -65,7 +63,7 @@ describe('Server', () => {
   describe('eth_getBlockByNumber', () => {
     it('fetches the block without full transactions', async () => {
       const response = await requestRPC('eth_getBlockByNumber', [
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
         false,
       ]);
       expect(response.status).toEqual(200);
@@ -79,7 +77,7 @@ describe('Server', () => {
 
     it('fetches the block with full transactions', async () => {
       const response = await requestRPC('eth_getBlockByNumber', [
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
         true,
       ]);
       expect(response.status).toEqual(200);
@@ -126,7 +124,7 @@ describe('Server', () => {
     it('fetches 0x for peer account', async () => {
       const response = await requestRPC('eth_getCode', [
         '0x1A0DfD0252700c79Fc54269577bBEed16773F17a',
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
       ]);
       expect(response.body).toEqual({ jsonrpc: '2.0', id: 10, result: '0x' });
     });
@@ -135,7 +133,7 @@ describe('Server', () => {
       const fixture = require('./fixtures/9eaacae0f81fb4d470d471f4aa57e237.json');
       const response = await requestRPC('eth_getCode', [
         '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552',
-        BLOCK_HEIGHT,
+        BLOCK_HEIGHT_HEX,
       ]);
 
       expect(response.status).toEqual(200);

@@ -65,31 +65,24 @@ export const validators = {
    * @param index index of parameter
    */
   blockOption(params: any[], index: number) {
-    if (typeof params[index] !== 'string') {
+    const blockOption = params[index];
+
+    if (typeof blockOption !== 'string') {
       throw new InvalidParamsError(
         `invalid argument ${index}: argument must be a string`,
       );
     }
 
-    const blockOption = params[index];
-
-    if (['latest', 'earliest', 'pending'].includes(blockOption)) {
-      return;
-    }
-
-    if (blockOption.substr(0, 2) === '0x') {
-      const hash = this.blockHash([blockOption], 0);
-      // todo: make integer validator?
-      const integer = this.hex([blockOption], 0);
-      // valid if undefined
-      if (hash === undefined || integer === undefined) {
+    try {
+      if (['latest', 'earliest', 'pending'].includes(blockOption)) {
         return;
       }
+      return this.hex([blockOption], 0);
+    } catch (e) {
+      throw new InvalidParamsError(
+        `invalid argument ${index}: block option must be a valid hex block number, or "latest", "earliest" or "pending"`,
+      );
     }
-
-    throw new InvalidParamsError(
-      `invalid argument ${index}: block option must be a valid 0x-prefixed block hash or hex integer, or "latest", "earliest" or "pending"`,
-    );
   },
 
   /**
@@ -119,13 +112,13 @@ export const validators = {
   },
 
   transaction(params: any[], index: number) {
-    if (typeof params[index] !== 'object') {
+    const tx = params[index];
+
+    if (typeof tx !== 'object') {
       throw new InvalidParamsError(
         `invalid argument ${index}: argument must be an object`,
       );
     }
-
-    const tx = params[index];
 
     // validate addresses
     for (const field of [tx.to, tx.from]) {
