@@ -389,10 +389,7 @@ export class VerifyingProvider {
 
   private getBlockNumberByBlockOpt(blockOpt: BlockOpt): bigint {
     // TODO: add support for blockOpts below
-    if (
-      typeof blockOpt === 'string' &&
-      ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)
-    ) {
+    if (typeof blockOpt === 'string' && ['pending', 'earliest', 'finalized', 'safe'].includes(blockOpt)) {
       throw new InvalidParamsError(`"pending" is not yet supported`);
     } else if (blockOpt === 'latest') {
       return this.latestBlockNumber;
