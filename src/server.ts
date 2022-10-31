@@ -15,7 +15,7 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     validators.blockOption(params, 1);
     const [address, blockOpt] = params;
 
-    provider.getBalance(address, blockOpt);
+    return await provider.getBalance(address, blockOpt);
   });
 
   server.addMethod('eth_blockNumber', () => {

@@ -13,13 +13,7 @@ export const validators = {
    * @param index index of parameter
    */
   address(params: any[], index: number) {
-    if (typeof params[index] !== 'string') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument must be a hex string`);
-    }
-
-    if (params[index].substr(0, 2) !== '0x') {
-      throw new InvalidParamsError(`invalid argument ${index}: missing 0x prefix`);
-    }
+    this.hex(params, index);
 
     const address = params[index].substr(2);
 
@@ -49,13 +43,7 @@ export const validators = {
    * @param index index of parameter
    */
   blockHash(params: any[], index: number) {
-    if (typeof params[index] !== 'string') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument must be a hex string`);
-    }
-
-    if (params[index].substr(0, 2) !== '0x') {
-      throw new InvalidParamsError(`invalid argument ${index}: hex string without 0x prefix`);
-    }
+    this.hex(params, index);
 
     const blockHash = params[index].substring(2);
 
@@ -126,20 +114,17 @@ export const validators = {
 
     const validate = (field: any, validator: Function) => {
       if (field === undefined) return;
-      const v = validator([field], 0);
-      if (v !== undefined) return v;
+      return validator([field], index);
     };
 
     // validate addresses
     for (const field of [tx.to, tx.from]) {
-      const v = validate(field, this.address);
-      if (v !== undefined) return v;
+      validate(field, this.address);
     }
 
     // validate hex
     for (const field of [tx.gas, tx.gasPrice, tx.value, tx.data]) {
-      const v = validate(field, this.hex);
-      if (v !== undefined) return v;
+      validate(field, this.hex);
     }
   },
 };
