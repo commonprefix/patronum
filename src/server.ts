@@ -2,7 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
-import { InvalidParamsError } from './errors';
+import { InternalError } from './errors';
 import { VerifyingProvider } from './provider';
 
 export function getJSONRPCServer(provider: VerifyingProvider) {
@@ -62,7 +62,7 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
       return await next(request, serverParams);
     } catch (error) {
       console.log(error);
-      return error.code ? error : new InvalidParamsError(error.message)
+      return error.code ? error : new InternalError(error.message)
     }
   };
 
