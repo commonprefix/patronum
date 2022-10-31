@@ -63,7 +63,6 @@ export const validators = {
 
     const blockOption = params[index];
 
-    console.log(blockOption);
     if (['latest', 'earliest', 'pending'].includes(blockOption)) {
       return;
     }
@@ -112,19 +111,18 @@ export const validators = {
 
     const tx = params[index];
 
-    const validate = (field: any, validator: Function) => {
-      if (field === undefined) return;
-      return validator([field], index);
-    };
-
     // validate addresses
     for (const field of [tx.to, tx.from]) {
-      validate(field, this.address);
+      // TODO: the below will create an error with incorrect index if the tx is not at index 0
+      if (field !== undefined)
+        this.address([field], 0);
     }
 
     // validate hex
     for (const field of [tx.gas, tx.gasPrice, tx.value, tx.data]) {
-      validate(field, this.hex);
+      // TODO: the below will create an error with incorrect index if the tx is not at index 0
+      if (field !== undefined)
+         this.hex([field], 0);
     }
   },
 };

@@ -1,8 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import { JSONRPCErrorException, JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
+import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
-import { InternalError } from './errors';
+// import { InternalError } from './errors';
 import { VerifyingProvider } from './provider';
 import { validators } from './validation';
 
@@ -100,19 +100,12 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return BigInt(provider.chainId()).toString();
   });
 
-  const exceptionMiddleware: JSONRPCServerMiddleware<void> = async (next, request, serverParams) => {
-    try {
-      console.log(`RPC Request ${request.method}`);
-      return await next(request, serverParams);
-    } catch (error) {
-      if (error instanceof JSONRPCErrorException) {
-        throw error;
-      }
-      throw new InternalError(error.message);
-    }
+  const logMiddleware: JSONRPCServerMiddleware<void> = async (next, request, serverParams) => {
+    console.log(`RPC Request ${request.method}`);
+    return await next(request, serverParams);
   };
 
-  server.applyMiddleware(exceptionMiddleware);
+  server.applyMiddleware(logMiddleware);
   return server;
 }
 
