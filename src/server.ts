@@ -26,14 +26,17 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return provider.chainId();
   });
 
-  server.addMethod('eth_getTransactionCount', async (params: [string, string]) => {
-    validators.paramsLength(params, 2);
-    validators.address(params, 0);
-    validators.blockOption(params, 1);
-    const [address, blockOpt] = params;
+  server.addMethod(
+    'eth_getTransactionCount',
+    async (params: [string, string]) => {
+      validators.paramsLength(params, 2);
+      validators.address(params, 0);
+      validators.blockOption(params, 1);
+      const [address, blockOpt] = params;
 
-    return await provider.getTransactionCount(address, blockOpt);
-  });
+      return await provider.getTransactionCount(address, blockOpt);
+    },
+  );
 
   server.addMethod('eth_getCode', async (params: [string, string]) => {
     validators.paramsLength(params, 2);
@@ -44,14 +47,17 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return await provider.getCode(address, blockOpt);
   });
 
-  server.addMethod('eth_getBlockByNumber', async (params: [string, boolean]) => {
-    validators.paramsLength(params, 2);
-    validators.blockOption(params, 0);
-    validators.bool(params, 1);
-    const [blockOpt, includeTx] = params;
+  server.addMethod(
+    'eth_getBlockByNumber',
+    async (params: [string, boolean]) => {
+      validators.paramsLength(params, 2);
+      validators.blockOption(params, 0);
+      validators.bool(params, 1);
+      const [blockOpt, includeTx] = params;
 
-    return await provider.getBlockByNumber(blockOpt, includeTx);
-  });
+      return await provider.getBlockByNumber(blockOpt, includeTx);
+    },
+  );
 
   server.addMethod('eth_getBlockByHash', async (params: [string, boolean]) => {
     validators.paramsLength(params, 2);
@@ -100,7 +106,11 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     return BigInt(provider.chainId()).toString();
   });
 
-  const logMiddleware: JSONRPCServerMiddleware<void> = async (next, request, serverParams) => {
+  const logMiddleware: JSONRPCServerMiddleware<void> = async (
+    next,
+    request,
+    serverParams,
+  ) => {
     console.log(`RPC Request ${request.method}`);
     return await next(request, serverParams);
   };
@@ -117,7 +127,10 @@ export function getExpressApp(provider: VerifyingProvider) {
 
   app.use((_, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept',
+    );
     next();
   });
 

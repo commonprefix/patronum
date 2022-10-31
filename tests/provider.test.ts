@@ -16,7 +16,11 @@ async function main() {
   const web3 = new Web3(RPC_URL);
   const currentblockNumber = await web3.eth.getBlockNumber();
   const block = await web3.eth.getBlock(currentblockNumber);
-  const provider = new VerifyingProvider(RPC_URL, currentblockNumber, block.hash);
+  const provider = new VerifyingProvider(
+    RPC_URL,
+    currentblockNumber,
+    block.hash,
+  );
   const blockNumber = currentblockNumber - 5; // to test the rolling back feature
   try {
     console.time('TruestedProvider Time');

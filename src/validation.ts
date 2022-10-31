@@ -18,7 +18,9 @@ export const validators = {
     const address = params[index].substr(2);
 
     if (!/^[0-9a-fA-F]+$/.test(address) || address.length !== 40) {
-      throw new InvalidParamsError(`invalid argument ${index}: invalid address`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: invalid address`,
+      );
     }
   },
 
@@ -29,11 +31,15 @@ export const validators = {
    */
   hex(params: any[], index: number) {
     if (typeof params[index] !== 'string') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument must be a hex string`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: argument must be a hex string`,
+      );
     }
 
     if (params[index].substr(0, 2) !== '0x') {
-      throw new InvalidParamsError(`invalid argument ${index}: hex string without 0x prefix`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: hex string without 0x prefix`,
+      );
     }
   },
 
@@ -48,7 +54,9 @@ export const validators = {
     const blockHash = params[index].substring(2);
 
     if (!/^[0-9a-fA-F]+$/.test(blockHash) || blockHash.length !== 64) {
-      throw new InvalidParamsError(`invalid argument ${index}: invalid block hash`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: invalid block hash`,
+      );
     }
   },
   /**
@@ -58,7 +66,9 @@ export const validators = {
    */
   blockOption(params: any[], index: number) {
     if (typeof params[index] !== 'string') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument must be a string`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: argument must be a string`,
+      );
     }
 
     const blockOption = params[index];
@@ -89,7 +99,9 @@ export const validators = {
    */
   bool(params: any[], index: number) {
     if (typeof params[index] !== 'boolean') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument is not boolean`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: argument is not boolean`,
+      );
     }
   },
 
@@ -100,13 +112,17 @@ export const validators = {
    */
   paramsLength(params: any[], requiredParamsCount: number) {
     if (params.length < requiredParamsCount) {
-      throw new InvalidParamsError(`missing value for required argument ${params.length}`);
+      throw new InvalidParamsError(
+        `missing value for required argument ${params.length}`,
+      );
     }
   },
 
   transaction(params: any[], index: number) {
     if (typeof params[index] !== 'object') {
-      throw new InvalidParamsError(`invalid argument ${index}: argument must be an object`);
+      throw new InvalidParamsError(
+        `invalid argument ${index}: argument must be an object`,
+      );
     }
 
     const tx = params[index];
@@ -114,15 +130,13 @@ export const validators = {
     // validate addresses
     for (const field of [tx.to, tx.from]) {
       // TODO: the below will create an error with incorrect index if the tx is not at index 0
-      if (field !== undefined)
-        this.address([field], 0);
+      if (field !== undefined) this.address([field], 0);
     }
 
     // validate hex
     for (const field of [tx.gas, tx.gasPrice, tx.value, tx.data]) {
       // TODO: the below will create an error with incorrect index if the tx is not at index 0
-      if (field !== undefined)
-         this.hex([field], 0);
+      if (field !== undefined) this.hex([field], 0);
     }
   },
 };
