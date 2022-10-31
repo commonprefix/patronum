@@ -16,12 +16,7 @@ const POLLING_DELAY = 13 * 1000; //13s
 async function main() {
   const web3 = new Web3(RPC_URL);
   const block = await web3.eth.getBlock('latest');
-  const provider = new VerifyingProvider(
-    RPC_URL,
-    BigInt(block.number),
-    block.hash,
-    CHAIN,
-  );
+  const provider = new VerifyingProvider(RPC_URL, BigInt(block.number), block.hash, CHAIN);
   if (RPC_URL_WS) {
     const web3Sub = new Web3(RPC_URL_WS);
     web3Sub.eth
@@ -30,9 +25,7 @@ async function main() {
         console.log('Subscribed to new blockHeaders');
       })
       .on('data', blockHeader => {
-        console.log(
-          `Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`,
-        );
+        console.log(`Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`);
         provider.update(blockHeader.hash, BigInt(blockHeader.number));
       })
       .on('error', console.error);
