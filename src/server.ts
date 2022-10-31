@@ -2,7 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
-import { INTERNAL_ERROR } from './constants';
+import { InternalError } from './errors';
 import { VerifyingProvider } from './provider';
 
 export function getJSONRPCServer(provider: VerifyingProvider) {
@@ -62,14 +62,7 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
       return await next(request, serverParams);
     } catch (error) {
       console.log(error);
-      if (error.code) {
-        return error;
-      } else {
-        return {
-          message: error.message,
-          code: INTERNAL_ERROR,
-        };
-      }
+      return error.code ? error : new InternalError(error.message)
     }
   };
 
