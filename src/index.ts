@@ -1,2 +1,3 @@
 export { VerifyingProvider } from './provider';
-export * from './server';
+export * from './json-rpc-server';
+export * from './express-server';
