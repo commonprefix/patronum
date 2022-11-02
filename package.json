@@ -1,6 +1,6 @@
 {
   "name": "@lightclients/patronum",
-  "version": "0.1.9-0",
+  "version": "0.1.9",
   "description": "Patronum: Ethereum RPC proxy that verifies RPC responses against given trusted block hashes",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -13,9 +13,8 @@
   "private": false,
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
-    "test": "jest",
     "prepare": "npm run build && husky install",
+    "test": "jest",
     "prettier:check": "npx prettier -c .",
     "prettier:fix": "npx prettier -w ."
   },
