@@ -31,7 +31,12 @@ import {
   GetProof,
 } from './types';
 import { InternalError, InvalidParamsError } from './errors';
-import { ZERO_ADDR, MAX_BLOCK_HISTORY, MAX_BLOCK_FUTURE } from './constants';
+import {
+  ZERO_ADDR,
+  MAX_BLOCK_HISTORY,
+  MAX_BLOCK_FUTURE,
+  DEFAULT_BLOCK_PARAMETER,
+} from './constants';
 import {
   headerDataFromWeb3Response,
   blockDataFromWeb3Response,
@@ -98,7 +103,10 @@ export class VerifyingProvider {
     }
   }
 
-  async getBalance(addressHex: AddressHex, blockOpt: BlockOpt) {
+  async getBalance(
+    addressHex: AddressHex,
+    blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
+  ) {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
     const { result: proof, success } = await this.rpc.request({
@@ -131,7 +139,7 @@ export class VerifyingProvider {
 
   async getCode(
     addressHex: AddressHex,
-    blockOpt: BlockOpt,
+    blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const res = await this.rpc.requestBatch([
@@ -176,7 +184,7 @@ export class VerifyingProvider {
 
   async getTransactionCount(
     addressHex: AddressHex,
-    blockOpt: BlockOpt,
+    blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
   ): Promise<HexString> {
     const header = await this.getBlockHeader(blockOpt);
     const address = Address.fromString(addressHex);
@@ -201,7 +209,7 @@ export class VerifyingProvider {
     return bigIntToHex(proof.nonce.toString());
   }
 
-  async call(transaction: RPCTx, blockOpt: BlockOpt) {
+  async call(transaction: RPCTx, blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER) {
     try {
       this.validateTx(transaction);
     } catch (e) {
@@ -237,7 +245,10 @@ export class VerifyingProvider {
     }
   }
 
-  async estimateGas(transaction: RPCTx, blockOpt: BlockOpt = 'latest') {
+  async estimateGas(
+    transaction: RPCTx,
+    blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
+  ) {
     try {
       this.validateTx(transaction);
     } catch (e) {

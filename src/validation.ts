@@ -103,8 +103,15 @@ export const validators = {
    * @param params parameters of method
    * @requiredParamsLength required length of parameters
    */
-  paramsLength(params: any[], requiredParamsCount: number) {
-    if (params.length < requiredParamsCount) {
+  paramsLength(
+    params: any[],
+    minRequiredParamsCount: number,
+    maxRequiredParamsCount: number = minRequiredParamsCount,
+  ) {
+    if (
+      params.length < minRequiredParamsCount ||
+      params.length > maxRequiredParamsCount
+    ) {
       throw new InvalidParamsError(
         `missing value for required argument ${params.length}`,
       );
