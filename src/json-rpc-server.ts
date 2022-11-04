@@ -8,9 +8,9 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
   const server = new JSONRPCServer();
 
   server.addMethod('eth_getBalance', async (params: [string, string]) => {
-    validators.paramsLength(params, 2);
+    validators.paramsLength(params, 1, 2);
     validators.address(params, 0);
-    validators.blockOption(params, 1);
+    if (params[1]) validators.blockOption(params, 1);
     const [address, blockOpt] = params;
 
     return await provider.getBalance(address, blockOpt);
@@ -27,9 +27,9 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
   server.addMethod(
     'eth_getTransactionCount',
     async (params: [string, string]) => {
-      validators.paramsLength(params, 2);
+      validators.paramsLength(params, 1, 2);
       validators.address(params, 0);
-      validators.blockOption(params, 1);
+      if (params[1]) validators.blockOption(params, 1);
       const [address, blockOpt] = params;
 
       return await provider.getTransactionCount(address, blockOpt);
@@ -37,9 +37,9 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
   );
 
   server.addMethod('eth_getCode', async (params: [string, string]) => {
-    validators.paramsLength(params, 2);
+    validators.paramsLength(params, 1, 2);
     validators.address(params, 0);
-    validators.blockOption(params, 1);
+    if (params[1]) validators.blockOption(params, 1);
     const [address, blockOpt] = params;
 
     return await provider.getCode(address, blockOpt);
@@ -67,18 +67,18 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
   });
 
   server.addMethod('eth_call', async (params: [RPCTx, string]) => {
-    validators.paramsLength(params, 2);
+    validators.paramsLength(params, 1, 2);
     validators.transaction(params, 0);
-    validators.blockOption(params, 1);
+    if (params[1]) validators.blockOption(params, 1);
     const [tx, blockOpt] = params;
 
     return await provider.call(tx, blockOpt);
   });
 
   server.addMethod('eth_estimateGas', async (params: [RPCTx, string]) => {
-    validators.paramsLength(params, 2);
+    validators.paramsLength(params, 1, 2);
     validators.transaction(params, 0);
-    validators.blockOption(params, 1);
+    if (params[1]) validators.blockOption(params, 1);
     const [tx, blockOpt] = params;
 
     return await provider.estimateGas(tx, blockOpt);
