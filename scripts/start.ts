@@ -1,4 +1,5 @@
 // TODO: currently its just a demo script, make it a test
+import log from '../src/logger';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -27,11 +28,11 @@ async function main() {
     web3Sub.eth
       .subscribe('newBlockHeaders')
       .on('connected', () => {
-        console.log('Subscribed to new blockHeaders');
+        log.info('Subscribed to new blockHeaders');
       })
       .on('data', blockHeader => {
-        console.log(
-          `Recieved a new blockheader: ${blockHeader.number} ${blockHeader.hash}`,
+        log.info(
+          `Received a new blockheader: ${blockHeader.number} ${blockHeader.hash}`,
         );
         provider.update(blockHeader.hash, BigInt(blockHeader.number));
       })
@@ -39,7 +40,7 @@ async function main() {
   } else {
     setInterval(async () => {
       const block = await web3.eth.getBlock('latest');
-      console.log(`Recieved a new blockheader: ${block.number} ${block.hash}`);
+      log.debug(`Received a new blockheader: ${block.number} ${block.hash}`);
       provider.update(block.hash, BigInt(block.number));
     }, POLLING_DELAY);
   }

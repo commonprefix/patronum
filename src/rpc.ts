@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as _ from 'lodash';
 import { REQUEST_BATCH_SIZE } from './constants';
+import log from './logger';
 
 export type RPCRequest = {
   method: string;
@@ -82,7 +83,7 @@ export class RPC {
       const res = await this._request(request);
       if (res[0].success) return res[0];
       else if (i == 1) {
-        console.error(
+        log.error(
           `RPC batch request failed after maximum retries: ${JSON.stringify(
             request,
             null,
@@ -126,7 +127,7 @@ export class RPC {
 
     const failedRequests = requestsRaw.map(r => !(r.id in results));
     if (failedRequests.length > 0) {
-      console.error(
+      log.error(
         `RPC batch request failed after maximum retries: ${JSON.stringify(
           requestsRaw,
           null,

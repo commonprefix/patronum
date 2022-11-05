@@ -30,7 +30,8 @@
     "json-rpc-2.0": "1.4.1",
     "lodash": "4.17.21",
     "rlp": "3.0.0",
-    "web3": "1.7.5"
+    "web3": "1.7.5",
+    "winston": "^3.8.2"
   },
   "devDependencies": {
     "@types/axios": "0.14.0",
