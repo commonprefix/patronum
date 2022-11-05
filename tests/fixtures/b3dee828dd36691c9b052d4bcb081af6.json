@@ -1,0 +1,47 @@
+{
+  "requests": [
+    {
+      "method": "eth_getTransactionReceipt",
+      "params": [
+        "0x49dcd5143d0efa73ab19cea38a51c183f2e30df7ba01d8375cd1d809ccdc8c28"
+      ],
+      "jsonrpc": "2.0",
+      "id": "11828524670838239232"
+    }
+  ],
+  "responses": [
+    {
+      "success": true,
+      "result": {
+        "blockHash": "0x74c150632fd60c63e76ea556bddfb4ba8a491c9344e2ad9ec0c9928c74ff235d",
+        "blockNumber": "0xf297c5",
+        "contractAddress": null,
+        "cumulativeGasUsed": "0xbc1de9",
+        "effectiveGasPrice": "0x52b03eb7b",
+        "from": "0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5",
+        "gasUsed": "0x565f",
+        "logs": [
+          {
+            "address": "0x388c818ca8b9251b393131c08a736a67ccb19297",
+            "topics": [
+              "0x27f12abfe35860a9a927b465bb3d4a9c23c8428174b83f278fe45ed7b4da2662"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000e8a18c63f701d5",
+            "blockNumber": "0xf297c5",
+            "transactionHash": "0x49dcd5143d0efa73ab19cea38a51c183f2e30df7ba01d8375cd1d809ccdc8c28",
+            "transactionIndex": "0x6f",
+            "blockHash": "0x74c150632fd60c63e76ea556bddfb4ba8a491c9344e2ad9ec0c9928c74ff235d",
+            "logIndex": "0x106",
+            "removed": false
+          }
+        ],
+        "logsBloom": "0x00000000000000000000000000000000000100004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000",
+        "status": "0x1",
+        "to": "0x388c818ca8b9251b393131c08a736a67ccb19297",
+        "transactionHash": "0x49dcd5143d0efa73ab19cea38a51c183f2e30df7ba01d8375cd1d809ccdc8c28",
+        "transactionIndex": "0x6f",
+        "type": "0x2"
+      }
+    }
+  ]
+}

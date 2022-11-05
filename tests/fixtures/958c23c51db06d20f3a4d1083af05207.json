@@ -1,0 +1,18 @@
+{
+  "requests": [
+    {
+      "method": "eth_sendRawTransaction",
+      "params": [
+        "0x02f868010680808252089469ab92540340453d06366984d5b4be58e149fca9865af3107a400080c001a0f260142f8b2aca58a94fdb74c20329c6cc048b41b028970a030519f0b835442fa0307aba5866d9a18044f148bb76f509f63ea4e4a9ca9d9b951b270afcdb055137"
+      ],
+      "jsonrpc": "2.0",
+      "id": "15999833090586288128"
+    }
+  ],
+  "responses": [
+    {
+      "success": true,
+      "result": "0xb7bf2085c8b17a519fb420ca50d7a3d8c382058212c7eeba83344924a7455aa1"
+    }
+  ]
+}
