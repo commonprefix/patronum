@@ -127,13 +127,13 @@ export const validators = {
     // validate addresses
     for (const field of [tx.to, tx.from]) {
       // TODO: the below will create an error with incorrect index if the tx is not at index 0
-      if (field !== undefined) this.address([field], 0);
+      if (field !== undefined && field !== null) this.address([field], 0);
     }
 
     // validate hex
     for (const field of [tx.gas, tx.gasPrice, tx.value, tx.data]) {
       // TODO: the below will create an error with incorrect index if the tx is not at index 0
-      if (field !== undefined) this.hex([field], 0);
+      if (field !== undefined && field !== null) this.hex([field], 0);
     }
   },
 };
