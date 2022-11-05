@@ -31,6 +31,7 @@ import {
   GetProof,
 } from './types';
 import { InternalError, InvalidParamsError } from './errors';
+import log from './logger';
 import {
   ZERO_ADDR,
   MAX_BLOCK_HISTORY,
@@ -86,7 +87,7 @@ export class VerifyingProvider {
       blockNumberHex in this.blockHashes &&
       this.blockHashes[blockNumberHex] !== blockHash
     ) {
-      console.log(
+      log.warn(
         'Overriding an existing verified blockhash. Possibly the chain had a reorg',
       );
     }
@@ -443,7 +444,7 @@ export class VerifyingProvider {
 
   private async waitForBlockNumber(blockNumber: bigint) {
     if (blockNumber <= this.latestBlockNumber) return;
-    console.log(`waiting for blockNumber ${blockNumber}`);
+    log.debug(`waiting for blockNumber ${blockNumber}`);
     const blockNumberHex = bigIntToHex(blockNumber);
     if (!(blockNumberHex in this.blockPromises)) {
       let r: () => void = () => {};
@@ -616,7 +617,7 @@ export class VerifyingProvider {
         parentBlockNumberHex in this.blockHashes &&
         this.blockHashes[parentBlockNumberHex] !== parentBlockHash
       ) {
-        console.log(
+        log.warn(
           'Overriding an existing verified blockhash. Possibly the chain had a reorg',
         );
       }

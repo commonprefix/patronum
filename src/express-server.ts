@@ -1,5 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import log from './logger';
 import { VerifyingProvider } from './provider';
 import { getJSONRPCServer } from './json-rpc-server';
 
@@ -35,5 +36,5 @@ export function getExpressApp(provider: VerifyingProvider) {
 export async function startServer(provider: VerifyingProvider, port: number) {
   const app = await getExpressApp(provider);
   app.listen(port);
-  console.log(`RPC Server started at http://localhost:${port}`);
+  log.info(`RPC Server started at http://localhost:${port}`);
 }

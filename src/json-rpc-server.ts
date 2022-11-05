@@ -1,6 +1,6 @@
 import { JSONRPCServer, JSONRPCServerMiddleware } from 'json-rpc-2.0';
 import { RPCTx } from './types';
-// import { InternalError } from './errors';
+import log from './logger';
 import { VerifyingProvider } from './provider';
 import { validators } from './validation';
 
@@ -109,7 +109,7 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
     request,
     serverParams,
   ) => {
-    console.log(`RPC Request ${request.method}`);
+    log.info(`RPC Request: ${request.method}`);
     return await next(request, serverParams);
   };
 
