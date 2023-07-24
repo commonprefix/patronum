@@ -4,10 +4,10 @@ import { getExpressApp, VerifyingProvider } from '../src/index';
 import { MockRPC } from './mock';
 import { RPCClient } from './utils';
 
-const BLOCK_HEIGHT = 15862076;
+const BLOCK_HEIGHT = 17737300;
 const BLOCK_HEIGHT_HEX = '0x' + BigInt(BLOCK_HEIGHT).toString(16);
 const BLOCK_HASH =
-  '0xbee445ff49d7a72316d277371af43f01cd215a767a1fece92341362856b8c678';
+  '0x7eb94f574042e620ea229200c0f23385c418cd0549723ea874c823090cf33758';
 const RPC_URL = process.env.RPC_URL || '';
 
 describe('Server', () => {
@@ -67,7 +67,7 @@ describe('Server', () => {
         false,
       ]);
       expect(response.status).toEqual(200);
-      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.number).toEqual(BLOCK_HEIGHT_HEX);
       expect(response.body.result.hash).toEqual(BLOCK_HASH);
       expect(response.body.result.transactions).toBeInstanceOf(Array);
       expect(
@@ -81,7 +81,7 @@ describe('Server', () => {
         true,
       ]);
       expect(response.status).toEqual(200);
-      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.number).toEqual(BLOCK_HEIGHT_HEX);
       expect(response.body.result.hash).toEqual(BLOCK_HASH);
       expect(response.body.result.transactions).toBeInstanceOf(Array);
       expect(
@@ -97,7 +97,7 @@ describe('Server', () => {
         false,
       ]);
       expect(response.status).toEqual(200);
-      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.number).toEqual(BLOCK_HEIGHT_HEX);
       expect(response.body.result.hash).toEqual(BLOCK_HASH);
       expect(response.body.result.transactions).toBeInstanceOf(Array);
       expect(
@@ -111,7 +111,7 @@ describe('Server', () => {
         true,
       ]);
       expect(response.status).toEqual(200);
-      expect(response.body.result.number).toEqual('0xf2093c');
+      expect(response.body.result.number).toEqual(BLOCK_HEIGHT_HEX);
       expect(response.body.result.hash).toEqual(BLOCK_HASH);
       expect(response.body.result.transactions).toBeInstanceOf(Array);
       expect(
