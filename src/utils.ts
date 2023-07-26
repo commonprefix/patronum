@@ -37,6 +37,7 @@ export function headerDataFromWeb3Response(blockInfo: any): HeaderData {
     baseFeePerGas: blockInfo.baseFeePerGas
       ? BigInt(blockInfo.baseFeePerGas)
       : undefined,
+    withdrawalsRoot: blockInfo.withdrawalsRoot,
   };
 }
 

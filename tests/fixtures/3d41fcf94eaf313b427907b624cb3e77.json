@@ -1,0 +1,19 @@
+{
+    "requests": [
+        {
+            "method": "eth_getCode",
+            "params": [
+                "0x1A0DfD0252700c79Fc54269577bBEed16773F17a",
+                "0x10ea654"
+            ],
+            "jsonrpc": "2.0",
+            "id": "1954499428411482112"
+        }
+    ],
+    "responses": [
+        {
+            "success": true,
+            "result": "0x"
+        }
+    ]
+}

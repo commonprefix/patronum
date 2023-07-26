@@ -2,7 +2,7 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import { Trie } from '@ethereumjs/trie';
 import rlp from 'rlp';
-import { Common, Chain } from '@ethereumjs/common';
+import { Common, Chain, Hardfork } from '@ethereumjs/common';
 import {
   Address,
   Account,
@@ -74,7 +74,7 @@ export class VerifyingProvider {
     this.rpc = new RPC({ URL: providerURL });
     this.common = new Common({
       chain,
-      // hardfork: Hardfork.ArrowGlacier,
+      hardfork: chain === Chain.Mainnet ? Hardfork.Shanghai : undefined,
     });
     const _blockNumber = BigInt(blockNumber);
     this.latestBlockNumber = _blockNumber;
@@ -639,7 +639,7 @@ export class VerifyingProvider {
       }
 
       const headerData = headerDataFromWeb3Response(blockInfo);
-      const header = BlockHeader.fromHeaderData(headerData);
+      const header = new BlockHeader(headerData, { common: this.common });
 
       if (!header.hash().equals(toBuffer(blockHash))) {
         throw new InternalError(
