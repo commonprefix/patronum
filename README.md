@@ -16,6 +16,7 @@ const provider = new VerifyingProvider(
   trustedBlockNumber,
   trustedBlockHash,
 );
+await provider.initialize();
 await startServer(provider, PORT);
 ```
 
@@ -29,6 +30,8 @@ const provider = new VerifyingProvider(
   trustedBlockNumber,
   trustedBlockHash,
 );
+
+await provider.initialize();
 
 console.log(await provider.getBalance(address, blockTag));
 

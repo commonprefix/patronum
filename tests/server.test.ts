@@ -15,8 +15,9 @@ describe('Server', () => {
   let provider: VerifyingProvider;
   let requestRPC: ReturnType<typeof RPCClient>;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     provider = new VerifyingProvider(RPC_URL, BLOCK_HEIGHT, BLOCK_HASH);
+    await provider.initialize();
     provider.rpc = new MockRPC({ URL: RPC_URL });
 
     app = getExpressApp(provider);

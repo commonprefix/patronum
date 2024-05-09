@@ -10,7 +10,7 @@ import { VerifyingProvider, startServer } from '../src';
 const RPC_URL = process.env.RPC_URL || '';
 const RPC_URL_WS = process.env.RPC_URL_WS;
 // Metamask doesn't allow same RPC URL for different networks
-const PORT = process.env.CHAIN_ID === '5' ? 8547 : 8546;
+const PORT = process.env.PORT || (process.env.CHAIN_ID === '5' ? 8547 : 8546);
 const CHAIN = process.env.CHAIN_ID === '5' ? Chain.Goerli : Chain.Mainnet;
 const POLLING_DELAY = 13 * 1000; //13s
 
@@ -21,8 +21,9 @@ async function main() {
     RPC_URL,
     BigInt(block.number),
     block.hash,
-    CHAIN,
   );
+  await provider.initialize(CHAIN);
+
   if (RPC_URL_WS) {
     const web3Sub = new Web3(RPC_URL_WS);
     web3Sub.eth
@@ -44,7 +45,7 @@ async function main() {
       provider.update(block.hash, BigInt(block.number));
     }, POLLING_DELAY);
   }
-  await startServer(provider, PORT);
+  await startServer(provider, Number(PORT));
 }
 
 main();

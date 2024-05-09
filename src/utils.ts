@@ -1,8 +1,8 @@
 import {
   setLengthLeft,
-  toBuffer,
+  hexToBytes,
   bigIntToHex,
-  bufferToHex,
+  bytesToHex,
   intToHex,
 } from '@ethereumjs/util';
 import { HeaderData, BlockData, Block } from '@ethereumjs/block';
@@ -38,6 +38,9 @@ export function headerDataFromWeb3Response(blockInfo: any): HeaderData {
       ? BigInt(blockInfo.baseFeePerGas)
       : undefined,
     withdrawalsRoot: blockInfo.withdrawalsRoot,
+    excessBlobGas: blockInfo.excessBlobGas,
+    blobGasUsed: blockInfo.blobGasUsed,
+    parentBeaconBlockRoot: blockInfo.parentBeaconBlockRoot,
   };
 }
 
@@ -50,7 +53,7 @@ export function txDataFromWeb3Response(
     gasPrice: BigInt(txInfo.gasPrice),
     gasLimit: txInfo.gas,
     to: isTruthy(txInfo.to)
-      ? setLengthLeft(toBuffer(txInfo.to), 20)
+      ? setLengthLeft(hexToBytes(txInfo.to), 20)
       : undefined,
     value: BigInt(txInfo.value),
     maxFeePerGas: isTruthy(txInfo.maxFeePerGas)
@@ -76,7 +79,7 @@ export function toJSONRPCTx(
 ): JSONRPCTx {
   const txJSON = tx.toJSON();
   return {
-    blockHash: block ? bufferToHex(block.hash()) : null,
+    blockHash: block ? bytesToHex(block.hash()) : null,
     blockNumber: block ? bigIntToHex(block.header.number) : null,
     from: tx.getSenderAddress().toString(),
     gas: txJSON.gasLimit!,
@@ -86,7 +89,7 @@ export function toJSONRPCTx(
     type: intToHex(tx.type),
     accessList: txJSON.accessList,
     chainId: txJSON.chainId,
-    hash: bufferToHex(tx.hash()),
+    hash: bytesToHex(tx.hash()),
     input: txJSON.data!,
     nonce: txJSON.nonce!,
     to: tx.to?.toString() ?? null,
@@ -109,11 +112,11 @@ export function toJSONRPCBlock(
   const transactions = block.transactions.map((tx, txIndex) =>
     includeTransactions
       ? toJSONRPCTx(tx, block, txIndex)
-      : bufferToHex(tx.hash()),
+      : bytesToHex(tx.hash()),
   );
   return {
     number: header.number!,
-    hash: bufferToHex(block.hash()),
+    hash: bytesToHex(block.hash()),
     parentHash: header.parentHash!,
     mixHash: header.mixHash,
     nonce: header.nonce!,
@@ -131,7 +134,7 @@ export function toJSONRPCBlock(
     gasUsed: header.gasUsed!,
     timestamp: header.timestamp!,
     transactions,
-    uncles: uncleHeaderHashes.map(bufferToHex),
+    uncles: uncleHeaderHashes.map(bytesToHex),
     baseFeePerGas: header.baseFeePerGas,
   };
 }

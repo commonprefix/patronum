@@ -21,6 +21,8 @@ async function main() {
     currentblockNumber,
     block.hash,
   );
+
+  await provider.initialize();
   const blockNumber = currentblockNumber - 5; // to test the rolling back feature
   try {
     console.time('TruestedProvider Time');
