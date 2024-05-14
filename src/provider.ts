@@ -451,7 +451,7 @@ export class VerifyingProvider {
 
     if (!equalsBytes(block.header.hash(), header.hash())) {
       throw new InternalError(
-        `BN(${header.number}): blockhash doest match the blockData provided by the RPC`,
+        `BN(${header.number}): blockhash doesn't match the blockData provided by the RPC`,
       );
     }
 
