@@ -15,6 +15,7 @@
     "build": "tsc",
     "prepare": "npm run build && husky install",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "prettier:check": "npx prettier -c .",
     "prettier:fix": "npx prettier -w ."
   },

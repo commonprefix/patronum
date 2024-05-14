@@ -3,3 +3,4 @@ lib/
 yarn-error.log
 .env
 patronum.log
+coverage/
