@@ -91,7 +91,7 @@ export class VerifyingProvider {
     const kzg = await loadKZG();
     this.common = new Common({
       chain,
-      hardfork: chain === Chain.Mainnet ? Hardfork.Shanghai : undefined,
+      hardfork: chain === Chain.Mainnet ? Hardfork.Cancun : undefined,
       customCrypto: { kzg },
     });
 
