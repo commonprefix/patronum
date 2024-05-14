@@ -4,10 +4,10 @@ import { getExpressApp, VerifyingProvider } from '../src/index';
 import { MockRPC } from './mock';
 import { RPCClient } from './utils';
 
-const BLOCK_HEIGHT = 17737300;
+const BLOCK_HEIGHT = 19867902;
 const BLOCK_HEIGHT_HEX = '0x' + BigInt(BLOCK_HEIGHT).toString(16);
 const BLOCK_HASH =
-  '0x7eb94f574042e620ea229200c0f23385c418cd0549723ea874c823090cf33758';
+  '0xe19a169623e7580aa11d3d58474f2cb3befbb8a85a166952f68a07c6d1c5d3bc';
 const RPC_URL = process.env.RPC_URL || '';
 
 describe('Server', () => {
