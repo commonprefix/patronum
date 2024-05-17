@@ -3,7 +3,7 @@ import Web3 from 'web3';
 import { loadKZG } from 'kzg-wasm';
 import { Trie } from '@ethereumjs/trie';
 import rlp from 'rlp';
-import { Common, Chain, Hardfork } from '@ethereumjs/common';
+import { Common, Chain, Hardfork, CustomCrypto } from '@ethereumjs/common';
 import {
   Address,
   Account,
@@ -60,7 +60,6 @@ export class VerifyingProvider {
   vm: VM | null = null;
   rpc: RPC;
 
-  private _initialized: boolean = false;
   private blockHashes: { [blockNumberHex: string]: Bytes32 } = {};
   private blockPromises: {
     [blockNumberHex: string]: { promise: Promise<void>; resolve: () => void };
@@ -72,30 +71,35 @@ export class VerifyingProvider {
     providerURL: string,
     blockNumber: bigint | number,
     blockHash: Bytes32,
+    chain: bigint | Chain = Chain.Mainnet,
+    customCrypto: CustomCrypto,
   ) {
     this.rpc = new RPC({ URL: providerURL });
     const _blockNumber = BigInt(blockNumber);
     this.latestBlockNumber = _blockNumber;
     this.blockHashes[bigIntToHex(_blockNumber)] = blockHash;
-  }
-
-  get initialized() {
-    return this._initialized;
-  }
-
-  async initialize(chain: bigint | Chain = Chain.Mainnet) {
-    if (this._initialized) {
-      throw new InternalError('provider already initialized');
-    }
-
-    const kzg = await loadKZG();
     this.common = new Common({
       chain,
       hardfork: chain === Chain.Mainnet ? Hardfork.Cancun : undefined,
-      customCrypto: { kzg },
+      customCrypto,
     });
+  }
 
-    this._initialized = true;
+  static async create(
+    providerURL: string,
+    blockNumber: bigint | number,
+    blockHash: Bytes32,
+    chain: bigint | Chain = Chain.Mainnet,
+  ): Promise<VerifyingProvider> {
+    const kzg = await loadKZG();
+    const customCrypto: CustomCrypto = { kzg };
+    return new VerifyingProvider(
+      providerURL,
+      blockNumber,
+      blockHash,
+      chain,
+      customCrypto,
+    );
   }
 
   update(blockHash: Bytes32, blockNumber: bigint) {
@@ -152,7 +156,6 @@ export class VerifyingProvider {
   }
 
   chainId(): HexString {
-    this.requireInitialized();
     return bigIntToHex(this.common.chainId());
   }
 
@@ -264,17 +267,10 @@ export class VerifyingProvider {
     }
   }
 
-  requireInitialized() {
-    if (!this.initialized) {
-      throw new InternalError('provider not initialized');
-    }
-  }
-
   async estimateGas(
     transaction: RPCTx,
     blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
   ) {
-    this.requireInitialized();
     try {
       this.validateTx(transaction);
     } catch (e) {
@@ -357,8 +353,6 @@ export class VerifyingProvider {
   }
 
   async sendRawTransaction(signedTx: string): Promise<string> {
-    this.requireInitialized();
-
     // TODO: brodcast tx directly to the mem pool?
     const { success } = await this.rpc.request({
       method: 'eth_sendRawTransaction',
@@ -434,8 +428,6 @@ export class VerifyingProvider {
   }
 
   private async getBlock(header: BlockHeader) {
-    this.requireInitialized();
-
     const { result: blockInfo, success } = await this.rpc.request({
       method: 'eth_getBlockByNumber',
       params: [bigIntToHex(header.number), true],
@@ -512,8 +504,6 @@ export class VerifyingProvider {
   }
 
   private async getVMCopy(): Promise<VM> {
-    this.requireInitialized();
-
     if (this.vm === null) {
       const blockchain = await Blockchain.create({ common: this.common });
       // path the blockchain to return the correct blockhash
@@ -660,8 +650,6 @@ export class VerifyingProvider {
   }
 
   private async getBlockHeaderByHash(blockHash: Bytes32) {
-    this.requireInitialized();
-
     if (!this.blockHeaders[blockHash]) {
       const { result: blockInfo, success } = await this.rpc.request({
         method: 'eth_getBlockByHash',

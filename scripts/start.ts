@@ -17,12 +17,12 @@ const POLLING_DELAY = 13 * 1000; //13s
 async function main() {
   const web3 = new Web3(RPC_URL);
   const block = await web3.eth.getBlock('latest');
-  const provider = new VerifyingProvider(
+  const provider = await VerifyingProvider.create(
     RPC_URL,
     BigInt(block.number),
     block.hash,
+    CHAIN,
   );
-  await provider.initialize(CHAIN);
 
   if (RPC_URL_WS) {
     const web3Sub = new Web3(RPC_URL_WS);
