@@ -700,7 +700,7 @@ export class VerifyingProvider {
     });
     const isAccountValid = equalsBytes(
       account.serialize(),
-      expectedAccountRLP ? expectedAccountRLP : emptyAccountSerialize,
+      expectedAccountRLP ?? emptyAccountSerialize,
     );
 
     if (!isAccountValid) return false;
