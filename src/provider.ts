@@ -80,7 +80,7 @@ export class VerifyingProvider {
     this.blockHashes[bigIntToHex(_blockNumber)] = blockHash;
     this.common = new Common({
       chain,
-      hardfork: chain === Chain.Mainnet ? Hardfork.Cancun : undefined,
+      hardfork: Hardfork.Cancun,
       customCrypto,
     });
   }
