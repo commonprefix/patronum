@@ -14,6 +14,8 @@ import {
   setLengthLeft,
   KECCAK256_NULL_S,
   equalsBytes,
+  KECCAK256_RLP,
+  KECCAK256_NULL,
 } from '@ethereumjs/util';
 import { VM } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
@@ -39,6 +41,7 @@ import {
   MAX_BLOCK_HISTORY,
   MAX_BLOCK_FUTURE,
   DEFAULT_BLOCK_PARAMETER,
+  HASH_ZERO,
 } from './constants';
 import {
   headerDataFromWeb3Response,
@@ -674,7 +677,8 @@ export class VerifyingProvider {
 
   private verifyCodeHash(code: Bytes, codeHash: Bytes32): boolean {
     return (
-      (code === '0x' && codeHash === KECCAK256_NULL_S) ||
+      (code === '0x' &&
+        (codeHash === KECCAK256_NULL_S || codeHash === HASH_ZERO)) ||
       Web3.utils.keccak256(code) === codeHash
     );
   }
@@ -695,8 +699,9 @@ export class VerifyingProvider {
     const account = Account.fromAccountData({
       nonce: BigInt(proof.nonce),
       balance: BigInt(proof.balance),
-      storageRoot: proof.storageHash,
-      codeHash: proof.codeHash,
+      storageRoot:
+        proof.storageHash === HASH_ZERO ? KECCAK256_RLP : proof.storageHash,
+      codeHash: proof.codeHash === HASH_ZERO ? KECCAK256_NULL : proof.codeHash,
     });
     const isAccountValid = equalsBytes(
       account.serialize(),
