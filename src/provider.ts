@@ -522,13 +522,13 @@ export class VerifyingProvider {
   }
 
   private async getVM(tx: RPCTx, header: BlockHeader): Promise<VM> {
-    // forcefully set gasPrice to 0 to avoid not enough balance error
+    // TODO: do we still need to forcefully set gasPrice to 0 to avoid not enough balance error?
     const _tx = {
       to: tx.to,
       from: tx.from ? tx.from : ZERO_ADDR,
       data: tx.data,
       value: tx.value,
-      gasPrice: '0x0',
+      gasPrice: tx.gasPrice,
       gas: tx.gas ? tx.gas : bigIntToHex(header.gasLimit!),
     };
     const { result, success } = await this.rpc.request({
