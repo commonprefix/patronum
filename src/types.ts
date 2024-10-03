@@ -117,6 +117,14 @@ export type JSONRPCReceipt = {
   status?: string; // QUANTITY, either 1 (success) or 0 (failure)
 };
 
+export type JSONRPCLogFilter = {
+  fromBlock?: string; // Block number in hex or tags like 'earliest', 'latest', 'pending'
+  toBlock?: string; // Block number in hex or tags like 'earliest', 'latest', 'pending'
+  address?: string | string[]; // Contract address or list of addresses
+  topics?: (string | string[] | null)[]; // Array of DATA topics, can include nulls for filtering
+  blockHash?: string; // Specific block hash, if provided fromBlock and toBlock are ignored
+};
+
 export type JSONRPCLog = {
   removed: boolean; // TAG - true when the log was removed, due to a chain reorganization. false if it's a valid log.
   logIndex: string | null; // QUANTITY - integer of the log index position in the block. null when it's pending.

@@ -32,6 +32,8 @@ import {
   JSONRPCReceipt,
   AccessList,
   GetProof,
+  JSONRPCLogFilter,
+  JSONRPCLog,
 } from './types';
 import { InternalError, InvalidParamsError } from './errors';
 import log from './logger';
@@ -161,6 +163,55 @@ export class VerifyingProvider {
     return bigIntToHex(this.common.chainId());
   }
 
+  async getLogs(filter: JSONRPCLogFilter): Promise<JSONRPCLog[]> {
+    // naive, forward the request to the RPC
+    const res = await this.rpc.request({
+      method: 'eth_getLogs',
+      params: [filter],
+    });
+    if (!res.success) {
+      throw new InternalError(`RPC request failed`);
+    }
+
+    // throw new InvalidParamsError(`"pending" is not yet supported`);
+
+    const logs = res.result as JSONRPCLog[];
+
+    // check logs against the state
+
+    // TODO parallelize
+    for (const log of logs) {
+      // TODO handle pending logs
+      const header = await this.getBlockHeader(log.blockNumber);
+
+      // receiptTrie
+      // logsBloom
+      const block = await this.getBlock(header);
+
+      // verify transaction
+      // log.transactionHash, log.transactionIndex
+      const txIndex = block.transactions.findIndex(
+        tx => bytesToHex(tx.hash()) === log.transactionHash.toLowerCase(),
+      );
+      if (txIndex === -1 || txIndex !== log.transactionIndex) {
+        throw new InternalError('the recipt provided by the RPC is invalid');
+      }
+      const tx = block.transactions[txIndex];
+      // log.logIndex
+
+      // eth_blockReceipts
+      // eth_getTransactionReceipt
+
+      // TODO: to verify the params below download all the tx recipts
+      // of the block, compute the recipt root and verify the recipt
+      // root matches that in the blockHeader
+
+      // log.data, log.topics?
+    }
+
+    return res.result;
+  }
+
   async getCode(
     addressHex: AddressHex,
     blockOpt: BlockOpt = DEFAULT_BLOCK_PARAMETER,
@@ -193,10 +244,7 @@ export class VerifyingProvider {
       throw new InternalError(`invalid account proof provided by the RPC`);
     }
 
-    const isCodeCorrect = await this.verifyCodeHash(
-      code,
-      accountProof.codeHash,
-    );
+    const isCodeCorrect = this.verifyCodeHash(code, accountProof.codeHash);
     if (!isCodeCorrect) {
       throw new InternalError(
         `code provided by the RPC doesn't match the account's codeHash`,
@@ -355,7 +403,7 @@ export class VerifyingProvider {
   }
 
   async sendRawTransaction(signedTx: string): Promise<string> {
-    // TODO: brodcast tx directly to the mem pool?
+    // TODO: broadcast tx directly to the mem pool?
     const { success } = await this.rpc.request({
       method: 'eth_sendRawTransaction',
       params: [signedTx],
@@ -595,7 +643,7 @@ export class VerifyingProvider {
         throw new InternalError(`invalid account proof provided by the RPC`);
       }
 
-      const isCodeCorrect = await this.verifyCodeHash(code, codeHash);
+      const isCodeCorrect = this.verifyCodeHash(code, codeHash);
       if (!isCodeCorrect) {
         throw new InternalError(
           `code provided by the RPC doesn't match the account's codeHash`,
@@ -628,7 +676,7 @@ export class VerifyingProvider {
   private async getBlockHash(blockNumber: bigint) {
     if (blockNumber > this.latestBlockNumber)
       throw new Error('cannot return blockhash for a blocknumber in future');
-    // TODO: fetch the blockHeader is batched request
+    // TODO: fetch the blockHeader in batched request
     let lastVerifiedBlockNumber = this.latestBlockNumber;
     while (lastVerifiedBlockNumber > blockNumber) {
       const hash = this.blockHashes[bigIntToHex(lastVerifiedBlockNumber)];
