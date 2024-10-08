@@ -12,6 +12,7 @@ import {
   hexToBytes,
   TypeOutput,
   setLengthLeft,
+  KECCAK256_RLP_S,
   KECCAK256_NULL_S,
   equalsBytes,
 } from '@ethereumjs/util';
@@ -36,6 +37,7 @@ import { InternalError, InvalidParamsError } from './errors';
 import log from './logger';
 import {
   ZERO_ADDR,
+  ZERO_HASH,
   MAX_BLOCK_HISTORY,
   MAX_BLOCK_FUTURE,
   DEFAULT_BLOCK_PARAMETER,
@@ -50,7 +52,7 @@ import { RPC } from './rpc';
 const bigIntToHex = (n: string | bigint | number): string =>
   '0x' + BigInt(n).toString(16);
 
-const emptyAccountSerialize = new Account().serialize();
+const emptyAccountRLP = new Account().serialize();
 
 // TODO: handle fallback if RPC fails
 // TODO: if anything is accessed outside the accesslist the provider
@@ -675,6 +677,7 @@ export class VerifyingProvider {
   private verifyCodeHash(code: Bytes, codeHash: Bytes32): boolean {
     return (
       (code === '0x' && codeHash === KECCAK256_NULL_S) ||
+      (code === '0x' && codeHash === ZERO_HASH) || // TODO: add comment to explain
       Web3.utils.keccak256(code) === codeHash
     );
   }
@@ -695,12 +698,14 @@ export class VerifyingProvider {
     const account = Account.fromAccountData({
       nonce: BigInt(proof.nonce),
       balance: BigInt(proof.balance),
-      storageRoot: proof.storageHash,
-      codeHash: proof.codeHash,
+      storageRoot:
+        proof.storageHash === ZERO_HASH ? KECCAK256_RLP_S : proof.storageHash,
+      codeHash:
+        proof.codeHash === ZERO_HASH ? KECCAK256_NULL_S : proof.codeHash,
     });
     const isAccountValid = equalsBytes(
       account.serialize(),
-      expectedAccountRLP ?? emptyAccountSerialize,
+      expectedAccountRLP ?? emptyAccountRLP,
     );
 
     if (!isAccountValid) return false;
