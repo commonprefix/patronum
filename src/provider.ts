@@ -15,11 +15,13 @@ import {
   KECCAK256_RLP_S,
   KECCAK256_NULL_S,
   equalsBytes,
+  KECCAK256_RLP,
 } from '@ethereumjs/util';
-import { VM } from '@ethereumjs/vm';
+import { VM, encodeReceipt } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
 import { Blockchain } from '@ethereumjs/blockchain';
-import { TransactionFactory } from '@ethereumjs/tx';
+import { TransactionFactory, TransactionType } from '@ethereumjs/tx';
+import { isInBloom, isTopicInBloom } from 'ethereum-bloom-filters';
 import {
   AddressHex,
   Bytes32,
@@ -48,6 +50,7 @@ import {
   headerDataFromWeb3Response,
   blockDataFromWeb3Response,
   toJSONRPCBlock,
+  txReceiptFromJSONRPCReceipt,
 } from './utils';
 import { RPC } from './rpc';
 
@@ -164,7 +167,6 @@ export class VerifyingProvider {
   }
 
   async getLogs(filter: JSONRPCLogFilter): Promise<JSONRPCLog[]> {
-    // naive, forward the request to the RPC
     const res = await this.rpc.request({
       method: 'eth_getLogs',
       params: [filter],
@@ -173,43 +175,173 @@ export class VerifyingProvider {
       throw new InternalError(`RPC request failed`);
     }
 
-    // throw new InvalidParamsError(`"pending" is not yet supported`);
-
     const logs = res.result as JSONRPCLog[];
+    const blockNumbers = new Set(
+      logs
+        .map(l => l.blockNumber)
+        .filter(bn => bn && Number.isInteger(parseInt(bn, 16))),
+    ) as Set<string>;
 
-    // check logs against the state
+    // caches
+    // blockNumber -> blockHeader
+    const blockHeaders = new Map<string, BlockHeader>();
+    // blockNumber -> block
+    const blocks = new Map<string, Block>();
+    // blockHash -> receipts
+    const blockReceipts = new Map<string, JSONRPCReceipt[]>();
+
+    // fetch blocks
+    await Promise.all(
+      Array.from(blockNumbers).map(async blockNumber => {
+        if (!blockHeaders.has(blockNumber)) {
+          const header = await this.getBlockHeader(blockNumber);
+          blockHeaders.set(blockNumber, header);
+        }
+        if (!blocks.has(blockNumber)) {
+          const header = blockHeaders.get(blockNumber)!;
+          const block = await this.getBlock(header);
+          blocks.set(blockNumber, block);
+        }
+      }),
+    );
 
     // TODO parallelize
-    for (const log of logs) {
-      // TODO handle pending logs
-      const header = await this.getBlockHeader(log.blockNumber);
-
-      // receiptTrie
-      // logsBloom
-      const block = await this.getBlock(header);
-
-      // verify transaction
-      // log.transactionHash, log.transactionIndex
-      const txIndex = block.transactions.findIndex(
-        tx => bytesToHex(tx.hash()) === log.transactionHash.toLowerCase(),
-      );
-      if (txIndex === -1 || txIndex !== log.transactionIndex) {
-        throw new InternalError('the recipt provided by the RPC is invalid');
+    for (const l of logs) {
+      if (
+        typeof l.logIndex !== 'string' ||
+        typeof l.blockNumber !== 'string' ||
+        typeof l.blockHash !== 'string' ||
+        typeof l.transactionHash !== 'string' ||
+        typeof l.transactionIndex !== 'string'
+      ) {
+        throw new InternalError(`"pending" logs are not supported`);
       }
-      const tx = block.transactions[txIndex];
-      // log.logIndex
 
-      // eth_blockReceipts
-      // eth_getTransactionReceipt
+      const block = blocks.get(l.blockNumber);
+      if (!block) {
+        throw new InternalError(`Block ${l.blockNumber} not found`);
+      }
+      const blockHash = bytesToHex(block.hash());
 
-      // TODO: to verify the params below download all the tx recipts
-      // of the block, compute the recipt root and verify the recipt
-      // root matches that in the blockHeader
+      // verify block hash matches
+      if (blockHash !== l.blockHash.toLowerCase()) {
+        throw new InternalError(
+          'the log provided by the RPC is invalid: blockHash not matching',
+        );
+      }
 
-      // log.data, log.topics?
+      // verify transaction index and hash matches
+      const txIndex = block.transactions.findIndex(
+        tx => bytesToHex(tx.hash()) === l.transactionHash!.toLowerCase(),
+      );
+      if (txIndex === -1 || txIndex !== parseInt(l.transactionIndex, 16)) {
+        throw new InternalError(
+          'the log provided by the RPC is invalid: transactionHash not matching',
+        );
+      }
+
+      // check if the log is not in the logsBloom
+      const logsBloom = bytesToHex(block.header.logsBloom);
+      if (
+        !isInBloom(logsBloom, l.address) ||
+        l.topics.some(topic => !isTopicInBloom(logsBloom, topic))
+      ) {
+        throw new InternalError('the log is not in the logsBloom');
+      }
+
+      // fetch all receipts in the block
+      let receipts: JSONRPCReceipt[];
+      if (blockReceipts.has(blockHash)) {
+        receipts = blockReceipts.get(blockHash)!;
+      } else {
+        receipts = await this.getBlockReceipts(blockHash);
+        blockReceipts.set(blockHash, receipts);
+      }
+
+      // reconstruct receipt trie
+      const reconstructedReceiptTrie = new Trie();
+      for (let i = 0; i < receipts.length; i++) {
+        const receiptJson = receipts[i] as JSONRPCReceipt;
+        const receipt = txReceiptFromJSONRPCReceipt(receiptJson);
+        const type: TransactionType = parseInt(receiptJson.type, 16);
+        const encoded = encodeReceipt(receipt, type);
+        await reconstructedReceiptTrie.put(rlp.encode(i), encoded);
+      }
+
+      // check if it matches
+      const computedReceiptRoot =
+        reconstructedReceiptTrie !== undefined
+          ? bytesToHex(reconstructedReceiptTrie.root())
+          : KECCAK256_RLP;
+
+      if (computedReceiptRoot !== bytesToHex(block.header.receiptTrie)) {
+        throw new InternalError(
+          'Receipt trie root does not match the block header receiptTrie',
+        );
+      }
+
+      // check log is included in the receipt
+      const receipt = receipts.find(
+        r =>
+          r.transactionHash.toLowerCase() === l.transactionHash!.toLowerCase(),
+      );
+      if (!receipt) {
+        throw new InternalError('Receipt not found for the log');
+      }
+      const logFound = receipt.logs.some(
+        log =>
+          log.address.toLowerCase() === l.address.toLowerCase() &&
+          log.data.toLowerCase() === l.data.toLowerCase() &&
+          log.topics.length === l.topics.length &&
+          log.topics.every(
+            (topic, index) =>
+              topic.toLowerCase() === l.topics[index].toLowerCase(),
+          ),
+      );
+      if (!logFound) {
+        throw new InternalError('Log not found in the receipt');
+      }
     }
 
     return res.result;
+  }
+
+  // TODO expose as an RPC request (and verify)
+  async getBlockReceipts(blockHash: Bytes32): Promise<JSONRPCReceipt[]> {
+    try {
+      const { result: receipts, success } = await this.rpc.request({
+        method: 'eth_getBlockReceipts',
+        params: [blockHash],
+      });
+
+      if (success) {
+        return receipts;
+      } else {
+        throw new Error('eth_getBlockReceipts RPC request failed');
+      }
+    } catch (error) {
+      // only fallback to eth_getTransactionReceipt if the method is not supported
+      // otherwise fail
+      if (!error?.message.includes('method not supported')) {
+        throw error;
+      }
+
+      const header = await this.getBlockHeaderByHash(blockHash);
+      const block = await this.getBlock(header);
+
+      const receipts = await this.rpc.requestBatch(
+        block.transactions.map(tx => ({
+          method: 'eth_getTransactionReceipt',
+          params: [bytesToHex(tx.hash())],
+        })),
+      );
+
+      if (receipts.some(r => !r.success)) {
+        throw new InternalError(`eth_getTransactionReceipt RPC request failed`);
+      }
+
+      return receipts.map(r => r.result);
+    }
   }
 
   async getCode(
@@ -433,7 +565,7 @@ export class VerifyingProvider {
       tx => bytesToHex(tx.hash()) === txHash.toLowerCase(),
     );
     if (index === -1) {
-      throw new InternalError('the recipt provided by the RPC is invalid');
+      throw new InternalError('the receipt provided by the RPC is invalid');
     }
     const tx = block.transactions[index];
 
@@ -444,8 +576,9 @@ export class VerifyingProvider {
       blockNumber: bigIntToHex(block.header.number),
       from: tx.getSenderAddress().toString(),
       to: tx.to?.toString() ?? null,
-      // TODO: to verify the params below download all the tx recipts
-      // of the block, compute the recipt root and verify the recipt
+      type: bigIntToHex(tx.type),
+      // TODO: to verify the params below download all the tx receipts
+      // of the block, compute the receipt root and verify the receipt
       // root matches that in the blockHeader
       cumulativeGasUsed: '0x0',
       effectiveGasPrice: '0x0',
@@ -546,7 +679,7 @@ export class VerifyingProvider {
         throw new InvalidParamsError('specified block is too far in future');
       } else if (blockNumber + MAX_BLOCK_HISTORY < this.latestBlockNumber) {
         throw new InvalidParamsError(
-          `specified block cannot older that ${MAX_BLOCK_HISTORY}`,
+          `specified block (${blockNumber}) cannot be older that ${MAX_BLOCK_HISTORY}`,
         );
       }
       return blockNumber;

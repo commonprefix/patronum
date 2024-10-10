@@ -3,6 +3,7 @@ import { JSONRPCLogFilter, RPCTx } from './types';
 import log from './logger';
 import { VerifyingProvider } from './provider';
 import { validators } from './validation';
+import { InvalidParamsError } from './errors';
 
 export function getJSONRPCServer(provider: VerifyingProvider) {
   const server = new JSONRPCServer();
@@ -84,6 +85,12 @@ export function getJSONRPCServer(provider: VerifyingProvider) {
       // Validate block options if they are present and blockHash is not
       if (filter.fromBlock) validators.blockOption([filter.fromBlock], 0);
       if (filter.toBlock) validators.blockOption([filter.toBlock], 0);
+      // Pending blocks cannot be verified in eth_getLogs
+      if ([filter.fromBlock, filter.toBlock].includes('pending')) {
+        throw new InvalidParamsError(
+          'eth_getLogs does not support pending blocks.',
+        );
+      }
     }
 
     // Validate address if it is present

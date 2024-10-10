@@ -112,6 +112,7 @@ export type JSONRPCReceipt = {
   contractAddress: string | null; // DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
   logs: JSONRPCLog[]; // Array - Array of log objects, which this transaction generated.
   logsBloom: string; // DATA, 256 Bytes - Bloom filter for light clients to quickly retrieve related logs.
+  type: string; // QUANTITY - EIP-2718 Typed Transaction type
   // It also returns either:
   root?: string; // DATA, 32 bytes of post-transaction stateroot (pre Byzantium)
   status?: string; // QUANTITY, either 1 (success) or 0 (failure)
