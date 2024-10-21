@@ -35,6 +35,9 @@ export class RPC {
     ) {
       throw new Error('method not supported by the provider');
     }
+    log.debug(
+      `RPC Request: ${request.method}: ${JSON.stringify(request.params)}`,
+    );
     return await this._retryRequest(request);
   }
 

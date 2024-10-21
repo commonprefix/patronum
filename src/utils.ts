@@ -12,7 +12,13 @@ import {
   FeeMarketEIP1559TxData,
   TypedTransaction,
 } from '@ethereumjs/tx';
-import { JSONRPCTx, JSONRPCBlock } from './types';
+import {
+  TxReceipt,
+  PreByzantiumTxReceipt,
+  PostByzantiumTxReceipt,
+} from '@ethereumjs/vm';
+import { Log } from '@ethereumjs/evm';
+import { JSONRPCTx, JSONRPCBlock, JSONRPCReceipt } from './types';
 
 const isTruthy = (val: any) => !!val;
 
@@ -137,4 +143,41 @@ export function toJSONRPCBlock(
     uncles: uncleHeaderHashes.map(bytesToHex),
     baseFeePerGas: header.baseFeePerGas,
   };
+}
+
+export function txReceiptFromJSONRPCReceipt(
+  receipt: JSONRPCReceipt,
+): TxReceipt {
+  // Transform logs
+  const logs: Log[] = receipt.logs.map(log => [
+    hexToBytes(log.address),
+    log.topics.map(topic => hexToBytes(topic)),
+    hexToBytes(log.data),
+  ]);
+
+  // Base receipt fields
+  const baseReceipt = {
+    cumulativeBlockGasUsed: BigInt(receipt.cumulativeGasUsed),
+    bitvector: hexToBytes(receipt.logsBloom),
+    logs,
+  };
+
+  // Determine the type of receipt
+  if (receipt.root) {
+    // Pre-Byzantium receipt
+    const preByzantiumReceipt: PreByzantiumTxReceipt = {
+      ...baseReceipt,
+      stateRoot: hexToBytes(receipt.root),
+    };
+    return preByzantiumReceipt;
+  } else if (receipt.status !== undefined) {
+    // Post-Byzantium receipt
+    const postByzantiumReceipt: PostByzantiumTxReceipt = {
+      ...baseReceipt,
+      status: parseInt(receipt.status, 16) as 0 | 1,
+    };
+    return postByzantiumReceipt;
+  } else {
+    throw new Error('Unsupported receipt type');
+  }
 }

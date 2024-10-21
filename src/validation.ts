@@ -60,7 +60,7 @@ export const validators = {
     }
   },
   /**
-   * validator to ensure valid block integer or hash, or string option ["latest", "earliest", "pending"]
+   * validator to ensure valid block integer or hash, or string option ["latest", "earliest", "pending", "finalized", "safe"]
    * @param params parameters of method
    * @param index index of parameter
    */
@@ -74,7 +74,11 @@ export const validators = {
     }
 
     try {
-      if (['latest', 'earliest', 'pending'].includes(blockOption)) {
+      if (
+        ['latest', 'earliest', 'pending', 'finalized', 'safe'].includes(
+          blockOption,
+        )
+      ) {
         return;
       }
       return this.hex([blockOption], 0);
