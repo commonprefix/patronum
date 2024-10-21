@@ -10,8 +10,13 @@ import { VerifyingProvider, startServer } from '../src';
 const RPC_URL = process.env.RPC_URL || '';
 const RPC_URL_WS = process.env.RPC_URL_WS;
 // Metamask doesn't allow same RPC URL for different networks
-const PORT = process.env.PORT || (process.env.CHAIN_ID === '5' ? 8547 : 8546);
-const CHAIN = process.env.CHAIN_ID === '5' ? Chain.Goerli : Chain.Mainnet;
+const PORT =
+  process.env.PORT ||
+  (process.env.CHAIN_ID === String(Chain.Sepolia) ? 8547 : 8546);
+const CHAIN =
+  process.env.CHAIN_ID === String(Chain.Sepolia)
+    ? Chain.Sepolia
+    : Chain.Mainnet;
 const POLLING_DELAY = 13 * 1000; //13s
 
 async function main() {
