@@ -16,11 +16,12 @@ import {
   KECCAK256_NULL_S,
   equalsBytes,
   KECCAK256_RLP,
+  PrefixedHexString,
 } from '@ethereumjs/util';
 import { VM, encodeReceipt } from '@ethereumjs/vm';
 import { BlockHeader, Block } from '@ethereumjs/block';
 import { Blockchain } from '@ethereumjs/blockchain';
-import { TransactionFactory, TransactionType } from '@ethereumjs/tx';
+import { TransactionFactory, TransactionType, TxData } from '@ethereumjs/tx';
 import { isInBloom, isTopicInBloom } from 'ethereum-bloom-filters';
 import {
   AddressHex,
@@ -54,8 +55,8 @@ import {
 } from './utils';
 import { RPC } from './rpc';
 
-const bigIntToHex = (n: string | bigint | number): string =>
-  '0x' + BigInt(n).toString(16);
+const bigIntToHex = (n: string | bigint | number) =>
+  ('0x' + BigInt(n).toString(16)) as PrefixedHexString;
 
 const emptyAccountRLP = new Account().serialize();
 
@@ -484,11 +485,17 @@ export class VerifyingProvider {
       }
     }
 
-    const txData = {
+    // TS not figuring out that the gasPrice is empty when txType is 2
+    // @ts-ignore
+    const txData:
+      | TxData[TransactionType.Legacy]
+      | TxData[TransactionType.AccessListEIP2930]
+      | TxData[TransactionType.FeeMarketEIP1559] = {
       ...transaction,
       type: bigIntToHex(txType),
-      gasLimit: transaction.gas,
+      gasLimit: transaction.gas as PrefixedHexString,
     };
+
     const tx = TransactionFactory.fromTxData(txData, {
       common: this.common,
       freeze: false,
@@ -786,7 +793,7 @@ export class VerifyingProvider {
       const account = Account.fromAccountData({
         nonce: BigInt(nonce),
         balance: BigInt(balance),
-        codeHash,
+        codeHash: codeHash as PrefixedHexString,
       });
 
       await vm.stateManager.putAccount(address, account);
@@ -878,10 +885,12 @@ export class VerifyingProvider {
     const account = Account.fromAccountData({
       nonce: BigInt(proof.nonce),
       balance: BigInt(proof.balance),
-      storageRoot:
-        proof.storageHash === ZERO_HASH ? KECCAK256_RLP_S : proof.storageHash,
-      codeHash:
-        proof.codeHash === ZERO_HASH ? KECCAK256_NULL_S : proof.codeHash,
+      storageRoot: (proof.storageHash === ZERO_HASH
+        ? KECCAK256_RLP_S
+        : proof.storageHash) as PrefixedHexString,
+      codeHash: (proof.codeHash === ZERO_HASH
+        ? KECCAK256_NULL_S
+        : proof.codeHash) as PrefixedHexString,
     });
     const isAccountValid = equalsBytes(
       account.serialize(),
